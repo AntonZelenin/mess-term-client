@@ -1,10 +1,12 @@
+use crate::helpers::list::StatefulList;
+
 #[derive(Debug, Default)]
-pub struct App {
+pub struct App<'a> {
     pub should_quit: bool,
-    pub chats: Vec<String>,
+    pub stateful_chats: StatefulList<&'a str>,
 }
 
-impl App {
+impl<'a> App<'a> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -13,9 +15,5 @@ impl App {
 
     pub fn quit(&mut self) {
         self.should_quit = true;
-    }
-
-    pub fn add_chats(&mut self, chats: Vec<String>) {
-        self.chats.extend(chats);
     }
 }

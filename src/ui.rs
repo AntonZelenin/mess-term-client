@@ -48,8 +48,14 @@ pub fn render(app: &mut App, f: &mut Frame) {
     );
 }
 
-fn build_chats<'a>(app: &App) -> List<'a> {
-    List::new(app.chats.clone())
+fn build_chats<'a>(app: &App<'a>) -> List<'a> {
+    let items: Vec<ListItem> = app
+        .stateful_chats.items
+        .iter()
+        .flat_map(|s| vec![ListItem::new(*s), ListItem::new("")])
+        .collect();
+
+    List::new(items)
         .block(Block::default().title("Chats").borders(Borders::ALL))
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::default().add_modifier(Modifier::ITALIC))

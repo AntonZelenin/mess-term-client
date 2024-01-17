@@ -13,10 +13,11 @@ mod chat;
 
 fn main() -> Result<()> {
     let mut app = App::new();
-    app.add_chats(
+    app.stateful_chats.items.extend(
         vec![
-            "Danil\nDid you learn Thai today?".to_string(),
-            "Anya\nI've finished your video".to_string(),
+            "Danil\nDid you learn Thai today?",
+            "Anya\nI've finished your video",
+            "Olya\nI got a new job!!!",
         ]
     );
     let mut tui = tui::build_tui();
