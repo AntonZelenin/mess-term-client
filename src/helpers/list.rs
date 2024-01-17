@@ -1,6 +1,6 @@
 use ratatui::widgets::ListState;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct StatefulList<T> {
     pub state: ListState,
     pub items: Vec<T>,
@@ -44,5 +44,14 @@ impl<T> StatefulList<T> {
 
     pub fn unselect(&mut self) {
         self.state.select(None);
+    }
+}
+
+impl<T> Default for StatefulList<T> {
+    fn default() -> Self {
+        Self {
+            state: ListState::default(),
+            items: Vec::new(),
+        }
     }
 }

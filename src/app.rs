@@ -1,13 +1,13 @@
+use crate::chat::Chat;
 use crate::helpers::list::StatefulList;
 
 #[derive(Debug, Default)]
-pub struct App<'a> {
+pub struct App {
     pub should_quit: bool,
-    pub chats: StatefulList<&'a str>,
-    pub messages: Option<StatefulList<&'a str>>,
+    pub chats: StatefulList<Chat>,
 }
 
-impl<'a> App<'a> {
+impl App {
     pub fn new() -> Self {
         Self::default()
     }

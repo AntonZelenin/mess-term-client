@@ -1,5 +1,6 @@
 use anyhow::Result;
 use crate::app::App;
+use crate::chat::Chat;
 use crate::event::Event;
 use crate::update::update;
 
@@ -13,13 +14,27 @@ mod chat;
 
 fn main() -> Result<()> {
     let mut app = App::new();
-    app.chats.items.extend(
-        vec![
-            "Danil",
-            "Anya",
-            "Olya",
-        ]
-    );
+    let mut chats = vec![
+        Chat::new(1, "Danil".to_string()),
+        Chat::new(4, "Olya".to_string()),
+        Chat::new(2, "Anya".to_string()),
+        Chat::new(3, "Masha".to_string()),
+    ];
+    chats[0].add_messages(vec![
+        "How are you?".to_string(),
+        "Hello".to_string(),
+    ]);
+    chats[1].add_messages(vec![
+        "Kelpi is beating Plyushik, omg!!!".to_string(),
+    ]);
+    chats[2].add_messages(vec![
+        "Hey, Anton. I've finished editing your video!".to_string(),
+    ]);
+    chats[3].add_messages(vec![
+        "Hello, when the next photo session will happen??".to_string(),
+    ]);
+
+    app.chats.items.extend(chats);
     let mut tui = tui::build_tui();
 
     tui.enter()?;

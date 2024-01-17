@@ -15,7 +15,7 @@ pub type CrosstermTerminal = Terminal<CrosstermBackend<io::Stderr>>;
 pub fn build_tui() -> Tui {
     let backend = CrosstermBackend::new(io::stderr());
     let terminal = Terminal::new(backend).unwrap();
-    let events = EventHandler::new(250);
+    let events = EventHandler::new(100);
     Tui::new(terminal, events)
 }
 
