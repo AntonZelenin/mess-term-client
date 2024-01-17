@@ -13,11 +13,11 @@ mod chat;
 
 fn main() -> Result<()> {
     let mut app = App::new();
-    app.stateful_chats.items.extend(
+    app.chats.items.extend(
         vec![
-            "Danil\nDid you learn Thai today?",
-            "Anya\nI've finished your video",
-            "Olya\nI got a new job!!!",
+            "Danil",
+            "Anya",
+            "Olya",
         ]
     );
     let mut tui = tui::build_tui();

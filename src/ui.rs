@@ -34,9 +34,10 @@ pub fn render(app: &mut App, f: &mut Frame) {
     let chats = &main_layout[0];
     let messages = &main_layout[1];
 
-    f.render_widget(
+    f.render_stateful_widget(
         build_chats(&app),
         *chats,
+        &mut app.chats.state,
     );
     f.render_widget(
         get_chat_hint(),
@@ -50,16 +51,18 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
 fn build_chats<'a>(app: &App<'a>) -> List<'a> {
     let items: Vec<ListItem> = app
-        .stateful_chats.items
+        .chats
+        .items
         .iter()
-        .flat_map(|s| vec![ListItem::new(*s), ListItem::new("")])
+        // .flat_map(|s| vec![ListItem::new(*s), ListItem::new("")])
+        .map(|s| ListItem::new(*s))
         .collect();
 
     List::new(items)
         .block(Block::default().title("Chats").borders(Borders::ALL))
         .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-        .highlight_symbol(">>")
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD))
+        .highlight_symbol(">")
         .repeat_highlight_symbol(true)
         .direction(ListDirection::TopToBottom)
 }

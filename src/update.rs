@@ -10,6 +10,9 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
                 app.quit()
             }
         }
+        KeyCode::Down | KeyCode::Char('j') => app.chats.next(),
+        KeyCode::Up | KeyCode::Char('k') => app.chats.previous(),
+        KeyCode::Left | KeyCode::Char('h') => app.chats.unselect(),
         _ => {}
     };
 }

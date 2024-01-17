@@ -3,7 +3,8 @@ use crate::helpers::list::StatefulList;
 #[derive(Debug, Default)]
 pub struct App<'a> {
     pub should_quit: bool,
-    pub stateful_chats: StatefulList<&'a str>,
+    pub chats: StatefulList<&'a str>,
+    pub messages: Option<StatefulList<&'a str>>,
 }
 
 impl<'a> App<'a> {
