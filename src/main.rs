@@ -2,15 +2,17 @@ use anyhow::Result;
 use crate::app::App;
 use crate::chat::Chat;
 use crate::event::Event;
+use crate::ui::tui;
 use crate::update::update;
 
 mod app;
+mod chat;
+mod constants;
 mod event;
 mod helpers;
-mod tui;
+mod session;
 mod ui;
 mod update;
-mod chat;
 
 fn main() -> Result<()> {
     let mut app = App::new();
@@ -34,12 +36,12 @@ fn main() -> Result<()> {
         "Hello, when the next photo session will happen??".to_string(),
     ]);
 
-    app.chats.items.extend(chats);
+    app.add_chats(chats);
     let mut tui = tui::build_tui();
 
     tui.enter()?;
 
-    while !app.should_quit {
+    while !app.should_quit() {
         tui.draw(&mut app)?;
 
         match tui.events.next()? {

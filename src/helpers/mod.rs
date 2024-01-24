@@ -2,14 +2,23 @@ pub mod list;
 
 use ratatui::prelude::*;
 
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     // Cut the given rectangle into three vertical pieces
+    // let popup_layout = Layout::default()
+    //     .direction(Direction::Vertical)
+    //     .constraints([
+    //         Constraint::Percentage((100 - percent_y) / 2),
+    //         Constraint::Percentage(percent_y),
+    //         Constraint::Percentage((100 - percent_y) / 2),
+    //     ])
+    //     .split(r);
+
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Min(1),
+            Constraint::Length(10),
+            Constraint::Min(1),
         ])
         .split(r);
 
