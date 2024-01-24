@@ -8,6 +8,7 @@ use ratatui::widgets::*;
 
 use crate::app::App;
 use crate::chat::Chat;
+use crate::constants::DEFAULT_THEME;
 use crate::helpers;
 use crate::helpers::list::StatefulList;
 use crate::ui::states::AuthActiveInput;
@@ -25,7 +26,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
 fn render_auth(app: &mut App, f: &mut Frame) {
     let mut auth_state = states::AuthWindowState::default();
     let auth_area = helpers::centered_rect(60, 70, f.size());
-    let input_are =  Layout::default()
+    let input_are = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(2),
@@ -41,12 +42,12 @@ fn render_auth(app: &mut App, f: &mut Frame) {
         // .borders(Borders::NONE)
         // .border_type(BorderType::Rounded)
         .title_alignment(Alignment::Center)
-        .style(Style::default().fg(Color::Rgb(147, 183, 190)).bg(Color::Rgb(40, 42, 54)));
+        .style(Style::default().fg(DEFAULT_THEME.fg).bg(DEFAULT_THEME.bg));
 
     let username_input = Paragraph::new(auth_state.username_input.as_str())
         .style(match auth_state.active_input {
-            AuthActiveInput::Username => Style::default().fg(Color::Rgb(212, 245, 245)),
-            AuthActiveInput::Password => Style::default().fg(Color::Rgb(140, 154, 158)),
+            AuthActiveInput::Username => Style::default().fg(DEFAULT_THEME.active),
+            AuthActiveInput::Password => Style::default().fg(DEFAULT_THEME.inactive),
         })
         .block(
             Block::default()
@@ -55,8 +56,8 @@ fn render_auth(app: &mut App, f: &mut Frame) {
         );
     let password_input = Paragraph::new(auth_state.password_input.as_str())
         .style(match auth_state.active_input {
-            AuthActiveInput::Username => Style::default().fg(Color::Rgb(140, 154, 158)),
-            AuthActiveInput::Password => Style::default().fg(Color::Rgb(212, 245, 245)),
+            AuthActiveInput::Username => Style::default().fg(DEFAULT_THEME.inactive),
+            AuthActiveInput::Password => Style::default().fg(DEFAULT_THEME.active),
         })
         .block(
             Block::default()
@@ -112,7 +113,7 @@ fn render_main(app: &mut App, f: &mut Frame) {
         );
     }
     f.render_widget(
-        get_app_hints(main_color.clone()),
+        get_app_hints(app),
         *footer_layout,
     );
 }
@@ -141,14 +142,23 @@ fn build_chats(chats: &Vec<Chat>, fg_color: Color) -> List {
         .direction(ListDirection::TopToBottom)
 }
 
-fn get_app_hints<'a>(fg_color: Color) -> Paragraph<'a> {
-    return Paragraph::new("Press `Esc`, `Ctrl-C` or `q` to stop running.")
+fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
+    let mut paragraph = match app.has_active_session() {
+        true => {
+            Paragraph::new("Press `Esc`, `Ctrl-C` or `q` to stop running.")
+        }
+        false => {
+            Paragraph::new("`Enter` - submit data, `Tab` - switch input")
+        }
+    };
+
+    paragraph
         .block(
             Block::default()
                 .title_alignment(Alignment::Center),
         )
-        .style(Style::default().fg(fg_color))
-        .alignment(Alignment::Center);
+        .style(Style::default().fg(DEFAULT_THEME.active))
+        .alignment(Alignment::Center)
 }
 
 fn build_messages(chats: &StatefulList<Chat>, fg_color: Color) -> List {
