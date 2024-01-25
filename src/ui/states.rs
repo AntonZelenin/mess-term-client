@@ -1,6 +1,10 @@
+use crate::app::InputEntity;
+
+// todo why all this in states? Bad place, bad name
 pub struct AuthWindowState {
     pub username_input: String,
     pub password_input: String,
+    actual_password_input: String,
     cursor_position: usize,
     pub active_input: AuthActiveInput,
 }
@@ -10,45 +14,25 @@ impl Default for AuthWindowState {
         Self {
             username_input: String::new(),
             password_input: String::new(),
+            actual_password_input: String::new(),
             cursor_position: 0,
             active_input: AuthActiveInput::Username,
         }
     }
 }
 
-pub enum AuthActiveInput {
-    Username,
-    Password,
-}
-
-impl AuthWindowState {
-    fn get_active_input_mut(&mut self) -> &mut String {
-        match self.active_input {
-            AuthActiveInput::Username => &mut self.username_input,
-            AuthActiveInput::Password => &mut self.password_input,
-        }
-    }
-
-    fn get_active_input(&self) -> &String {
-        match self.active_input {
-            AuthActiveInput::Username => &self.username_input,
-            AuthActiveInput::Password => &self.password_input,
-        }
-    }
-
-    fn move_cursor_left(&mut self) {
-        let cursor_moved_left = self.cursor_position.saturating_sub(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_left);
-    }
-
-    fn move_cursor_right(&mut self) {
-        let cursor_moved_right = self.cursor_position.saturating_add(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_right);
-    }
-
+impl InputEntity for AuthWindowState {
     fn enter_char(&mut self, new_char: char) {
         let cursor_position = self.cursor_position;
-        self.get_active_input_mut().insert(cursor_position, new_char);
+        match self.active_input {
+            AuthActiveInput::Username => {
+                self.get_active_input_mut().insert(cursor_position, new_char);
+            }
+            AuthActiveInput::Password => {
+                self.actual_password_input.insert(cursor_position, new_char);
+                self.get_active_input_mut().insert(cursor_position, '*');
+            }
+        }
 
         self.move_cursor_right();
     }
@@ -75,6 +59,16 @@ impl AuthWindowState {
         }
     }
 
+    fn move_cursor_left(&mut self) {
+        let cursor_moved_left = self.cursor_position.saturating_sub(1);
+        self.cursor_position = self.clamp_cursor(cursor_moved_left);
+    }
+
+    fn move_cursor_right(&mut self) {
+        let cursor_moved_right = self.cursor_position.saturating_add(1);
+        self.cursor_position = self.clamp_cursor(cursor_moved_right);
+    }
+
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
         new_cursor_pos.clamp(0, self.get_active_input().len())
     }
@@ -82,4 +76,41 @@ impl AuthWindowState {
     fn reset_cursor(&mut self) {
         self.cursor_position = 0;
     }
+
+    fn switch_to_next_input(&mut self) {
+        self.active_input = match self.active_input {
+            AuthActiveInput::Username => AuthActiveInput::Password,
+            AuthActiveInput::Password => AuthActiveInput::Username,
+        };
+        self.move_cursor_to_eol();
+    }
+}
+
+impl AuthWindowState {
+    pub fn get_cursor_position(&self) -> usize {
+        self.cursor_position
+    }
+
+    fn get_active_input_mut(&mut self) -> &mut String {
+        match self.active_input {
+            AuthActiveInput::Username => &mut self.username_input,
+            AuthActiveInput::Password => &mut self.password_input,
+        }
+    }
+
+    fn get_active_input(&self) -> &String {
+        match self.active_input {
+            AuthActiveInput::Username => &self.username_input,
+            AuthActiveInput::Password => &self.password_input,
+        }
+    }
+
+    fn move_cursor_to_eol(&mut self) {
+        self.cursor_position = self.get_active_input().len();
+    }
+}
+
+pub enum AuthActiveInput {
+    Username,
+    Password,
 }

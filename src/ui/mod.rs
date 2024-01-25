@@ -14,7 +14,7 @@ use crate::helpers::list::StatefulList;
 use crate::ui::states::AuthActiveInput;
 
 pub mod tui;
-mod states;
+pub mod states;
 
 pub fn render(app: &mut App, f: &mut Frame) {
     render_main(app, f);
@@ -24,7 +24,6 @@ pub fn render(app: &mut App, f: &mut Frame) {
 }
 
 fn render_auth(app: &mut App, f: &mut Frame) {
-    let mut auth_state = states::AuthWindowState::default();
     let auth_area = helpers::centered_rect(60, 70, f.size());
     let input_are = Layout::default()
         .direction(Direction::Vertical)
@@ -44,8 +43,8 @@ fn render_auth(app: &mut App, f: &mut Frame) {
         .title_alignment(Alignment::Center)
         .style(Style::default().fg(DEFAULT_THEME.fg).bg(DEFAULT_THEME.bg));
 
-    let username_input = Paragraph::new(auth_state.username_input.as_str())
-        .style(match auth_state.active_input {
+    let username_input = Paragraph::new(app.auth_window.username_input.as_str())
+        .style(match app.auth_window.active_input {
             AuthActiveInput::Username => Style::default().fg(DEFAULT_THEME.active),
             AuthActiveInput::Password => Style::default().fg(DEFAULT_THEME.inactive),
         })
@@ -54,8 +53,8 @@ fn render_auth(app: &mut App, f: &mut Frame) {
                 .borders(Borders::ALL)
                 .title("Username")
         );
-    let password_input = Paragraph::new(auth_state.password_input.as_str())
-        .style(match auth_state.active_input {
+    let password_input = Paragraph::new(app.auth_window.password_input.as_str())
+        .style(match app.auth_window.active_input {
             AuthActiveInput::Username => Style::default().fg(DEFAULT_THEME.inactive),
             AuthActiveInput::Password => Style::default().fg(DEFAULT_THEME.active),
         })
@@ -69,6 +68,16 @@ fn render_auth(app: &mut App, f: &mut Frame) {
     f.render_widget(block, auth_area);
     f.render_widget(username_input, input_are[1]);
     f.render_widget(password_input, input_are[2]);
+
+    let active_input_area = match app.auth_window.active_input {
+        AuthActiveInput::Username => input_are[1],
+        AuthActiveInput::Password => input_are[2],
+    };
+    f.set_cursor(
+        active_input_area.x + app.auth_window.get_cursor_position() as u16 + 1,
+        // Move one line down, from the border to the input line
+        active_input_area.y + 1,
+    )
 }
 
 fn render_main(app: &mut App, f: &mut Frame) {

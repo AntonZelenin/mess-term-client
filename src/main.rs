@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crate::app::App;
-use crate::chat::Chat;
+// use crate::chat::Chat;
 use crate::event::Event;
 use crate::ui::tui;
 use crate::update::update;
