@@ -2,18 +2,9 @@ use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEventKind};
 use crate::chat::Chat;
 use crate::helpers::list::StatefulList;
+use crate::session;
 use crate::session::Session;
 use crate::ui::states::AuthWindowState;
-
-// todo move me
-fn load_session() -> Option<Session> {
-    None
-}
-
-// todo move me
-fn load_chats(session: &Option<Session>) -> StatefulList<Chat> {
-    StatefulList::default()
-}
 
 pub struct App {
     pub chats: StatefulList<Chat>,
@@ -25,7 +16,7 @@ pub struct App {
 
 impl App {
     pub fn new() -> Self {
-        let session = load_session();
+        let session = session::load_session();
         let chats = if session.is_some() {
             load_chats(&session)
         } else {

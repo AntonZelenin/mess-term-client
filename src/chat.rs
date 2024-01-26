@@ -1,4 +1,5 @@
 use crate::helpers::list::StatefulList;
+use crate::session::Session;
 
 #[derive(Debug, Clone)]
 pub struct Chat {
@@ -23,4 +24,8 @@ impl Chat {
             self.messages = Some(StatefulList::with_items(messages));
         }
     }
+}
+
+pub fn load_chats(session: Session) -> Vec<Chat> {
+    unimplemented!()
 }
