@@ -1,6 +1,6 @@
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEventKind};
-use crate::chat::Chat;
+use crate::chat::{Chat, load_chats};
 use crate::helpers::list::StatefulList;
 use crate::session;
 use crate::session::Session;

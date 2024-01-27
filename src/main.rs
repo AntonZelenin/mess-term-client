@@ -5,6 +5,7 @@ use crate::event::Event;
 use crate::ui::tui;
 use crate::update::update;
 
+mod api;
 mod app;
 mod chat;
 mod constants;
