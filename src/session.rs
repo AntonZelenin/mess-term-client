@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::Path;
-use crate::constants;
 
 pub struct Session {
     pub token: String,

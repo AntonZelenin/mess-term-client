@@ -1,39 +1,52 @@
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEventKind};
-use crate::chat::{Chat, load_chats};
+use crate::api;
+use crate::chat::Chat;
+use crate::contact::Contact;
 use crate::helpers::list::StatefulList;
 use crate::session;
-use crate::session::Session;
 use crate::ui::states::AuthWindowState;
+use crate::ui::chat::StatefulChat;
 
 pub struct App {
-    pub chats: StatefulList<Chat>,
+    pub chats: StatefulList<StatefulChat>,
+    pub contacts: Vec<Contact>,
     pub auth_window: AuthWindowState,
     pub active_input_state: InputStates,
-    session: Option<Session>,
+    api_client: api::Client,
     should_quit: bool,
 }
 
 impl App {
     pub fn new() -> Self {
-        let session = session::load_session();
-        let chats = if session.is_some() {
-            load_chats(&session)
-        } else {
-            StatefulList::default()
-        };
+        let mut api_client = api::Client::new(session::load_session());
+        let mut stateful_chats = StatefulList::new();
+        let mut contacts = Vec::new();
+
+        if api_client.is_authenticated() {
+            let chats = api_client.get_chats().unwrap();
+
+            stateful_chats = StatefulList::with_items(
+                chats
+                    .into_iter()
+                    .map(StatefulChat::from_chat)
+                    .collect(),
+            );
+            contacts = api_client.get_contacts().unwrap();
+        }
 
         Self {
-            chats,
+            chats: stateful_chats,
+            contacts,
             auth_window: AuthWindowState::default(),
-            active_input_state: if session.is_none() { InputStates::Login } else { InputStates::SearchChat },
-            session,
+            active_input_state: if !api_client.is_authenticated() { InputStates::Login } else { InputStates::SearchChat },
+            api_client,
             should_quit: false,
         }
     }
 
-    pub fn has_active_session(&self) -> bool {
-        self.session.is_some()
+    pub fn is_authenticated(&self) -> bool {
+        self.api_client.is_authenticated()
     }
 
     pub fn tick(&self) {}
@@ -47,11 +60,7 @@ impl App {
     }
 
     pub fn add_chat(&mut self, chat: Chat) {
-        self.chats.items.push(chat);
-    }
-
-    pub fn add_chats(&mut self, chats: Vec<Chat>) {
-        self.chats.items.extend(chats);
+        self.chats.push(StatefulChat::from_chat(chat));
     }
 
     fn get_active_input_state<'a>(&'a mut self) -> &'a mut dyn InputEntity {

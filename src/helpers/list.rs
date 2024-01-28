@@ -7,11 +7,22 @@ pub struct StatefulList<T> {
 }
 
 impl<T> StatefulList<T> {
+    pub fn new() -> StatefulList<T> {
+        StatefulList {
+            state: ListState::default(),
+            items: Vec::new(),
+        }
+    }
+    
     pub fn with_items(items: Vec<T>) -> StatefulList<T> {
         StatefulList {
             state: ListState::default(),
             items,
         }
+    }
+    
+    pub fn push(&mut self, item: T) {
+        self.items.push(item);
     }
 
     pub fn next(&mut self) {

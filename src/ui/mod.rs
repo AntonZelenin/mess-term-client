@@ -7,18 +7,19 @@ use ratatui::prelude::*;
 use ratatui::widgets::*;
 
 use crate::app::App;
-use crate::chat::Chat;
 use crate::constants::DEFAULT_THEME;
 use crate::helpers;
 use crate::helpers::list::StatefulList;
+use crate::ui::chat::StatefulChat;
 use crate::ui::states::AuthActiveInput;
 
 pub mod tui;
 pub mod states;
+pub mod chat;
 
 pub fn render(app: &mut App, f: &mut Frame) {
     render_main(app, f);
-    if !app.has_active_session() {
+    if !app.is_authenticated() {
         render_auth(app, f);
     }
 }
@@ -128,14 +129,14 @@ fn render_main(app: &mut App, f: &mut Frame) {
 }
 
 fn get_main_color(app: &App) -> Color {
-    if app.has_active_session() {
+    if app.is_authenticated() {
         Color::Yellow
     } else {
         Color::DarkGray
     }
 }
 
-fn build_chats(chats: &Vec<Chat>, fg_color: Color) -> List {
+fn build_chats(chats: &Vec<StatefulChat>, fg_color: Color) -> List {
     let items: Vec<ListItem> = chats
         .iter()
         // .flat_map(|s| vec![ListItem::new(*s), ListItem::new("")])
@@ -152,7 +153,7 @@ fn build_chats(chats: &Vec<Chat>, fg_color: Color) -> List {
 }
 
 fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
-    let mut paragraph = match app.has_active_session() {
+    let paragraph = match app.is_authenticated() {
         true => {
             Paragraph::new("Press `Esc`, `Ctrl-C` or `q` to stop running.")
         }
@@ -170,14 +171,15 @@ fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
         .alignment(Alignment::Center)
 }
 
-fn build_messages(chats: &StatefulList<Chat>, fg_color: Color) -> List {
-    let messages = chats.items[chats.state.selected().unwrap()].messages.as_ref().unwrap();
+fn build_messages(chats: &StatefulList<StatefulChat>, fg_color: Color) -> List {
+    let chat = &chats.items[chats.state.selected().unwrap()];
+    let messages = chat.messages.clone();
 
     let items: Vec<ListItem> = messages
         .items
         .iter()
         // .flat_map(|s| vec![ListItem::new(*s), ListItem::new("")])
-        .map(|s| ListItem::new(s.as_str()))
+        .map(|s| ListItem::new(s.as_string()))
         .collect();
 
     List::new(items)

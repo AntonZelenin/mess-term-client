@@ -1,26 +1,20 @@
-use crate::helpers::list::StatefulList;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Message {
+    pub id: u32,
+    pub content: String,
+}
+
+impl Message {
+    pub fn as_string(&self) -> String {
+        self.content.clone()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Chat {
     pub id: u32,
     pub name: String,
-    pub messages: Option<StatefulList<String>>,
-}
-
-impl Chat {
-    pub fn new(id: u32, name: String) -> Self {
-        Self {
-            id,
-            name,
-            messages: None,
-        }
-    }
-
-    pub fn add_messages(&mut self, messages: Vec<String>) {
-        if let Some(m) = &mut self.messages {
-            m.items.extend(messages);
-        } else {
-            self.messages = Some(StatefulList::with_items(messages));
-        }
-    }
+    pub messages: Vec<Message>,
 }
