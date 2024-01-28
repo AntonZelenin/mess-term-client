@@ -24,8 +24,8 @@ impl App {
         let mut contacts = HashMap::new();
 
         if api_client.is_authenticated() {
-            stateful_chats = Self::load_chats(&mut api_client);
             contacts = Self::load_contacts(&mut api_client);
+            stateful_chats = Self::load_chats(&mut api_client);
         }
 
         Self {
@@ -95,8 +95,8 @@ impl App {
                 // todo handle incorrect username/password
                 self.login(&res["username"], &res["password"]).expect("Failed to login");
                 auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
-                self.chats = Self::load_chats(&mut self.api_client);
                 self.contacts = Self::load_contacts(&mut self.api_client);
+                self.chats = Self::load_chats(&mut self.api_client);
                 self.active_input_state = InputStates::SearchChat;
             },
             InputStates::SearchChat => unimplemented!(),

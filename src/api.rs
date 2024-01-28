@@ -6,7 +6,7 @@ use crate::auth::AuthTokens;
 
 // todo https
 pub const AUTH_SERVER_API_URL: &str = "http://localhost:8000/api/v1";
-pub const APP_SERVER_API_URL: &str = "ws://localhost:8800/api/v1";
+pub const APP_SERVER_API_URL: &str = "localhost:8800/api/v1";
 
 pub struct Client {
     client: reqwest::blocking::Client,
@@ -59,7 +59,8 @@ impl Client {
     }
 
     pub fn get_chats(&mut self) -> Result<Vec<Chat>, String> {
-        return match self.post(&format!("{}/chats", APP_SERVER_API_URL)) {
+        // todo url build is temporary, improve
+        return match self.post(&format!("http://{}/chats", APP_SERVER_API_URL)) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
@@ -74,7 +75,8 @@ impl Client {
     }
 
     pub fn get_contacts(&mut self) -> Result<HashMap<String, Contact>, String> {
-        return match self.post(&format!("{}/contacts", APP_SERVER_API_URL)) {
+        // todo url build is temporary, improve
+        return match self.post(&format!("http://{}/contacts", APP_SERVER_API_URL)) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
