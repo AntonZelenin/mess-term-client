@@ -1,16 +1,15 @@
-use crossterm::event;
-use crossterm::event::{Event, KeyCode, KeyEventKind};
-use crate::api;
+use std::collections::HashMap;
+use crate::{api, auth};
 use crate::chat::Chat;
 use crate::contact::Contact;
 use crate::helpers::list::StatefulList;
-use crate::session;
+use crate::input::InputEntity;
 use crate::ui::states::AuthWindowState;
 use crate::ui::chat::StatefulChat;
 
 pub struct App {
     pub chats: StatefulList<StatefulChat>,
-    pub contacts: Vec<Contact>,
+    pub contacts: HashMap<String, Contact>,
     pub auth_window: AuthWindowState,
     pub active_input_state: InputStates,
     api_client: api::Client,
@@ -18,21 +17,15 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> Self {
-        let mut api_client = api::Client::new(session::load_session());
+    pub fn new(
+        mut api_client: api::Client,
+    ) -> Self {
         let mut stateful_chats = StatefulList::new();
-        let mut contacts = Vec::new();
+        let mut contacts = HashMap::new();
 
         if api_client.is_authenticated() {
-            let chats = api_client.get_chats().unwrap();
-
-            stateful_chats = StatefulList::with_items(
-                chats
-                    .into_iter()
-                    .map(StatefulChat::from_chat)
-                    .collect(),
-            );
-            contacts = api_client.get_contacts().unwrap();
+            stateful_chats = Self::load_chats(&mut api_client);
+            contacts = Self::load_contacts(&mut api_client);
         }
 
         Self {
@@ -47,6 +40,10 @@ impl App {
 
     pub fn is_authenticated(&self) -> bool {
         self.api_client.is_authenticated()
+    }
+
+    pub fn login(&mut self, username: &str, password: &str) -> Result<(), String> {
+        self.api_client.login(username, password)
     }
 
     pub fn tick(&self) {}
@@ -90,46 +87,40 @@ impl App {
     pub fn switch_to_next_input(&mut self) {
         self.get_active_input_state().switch_to_next_input();
     }
+
+    pub fn submit(&mut self) {
+        match self.active_input_state {
+            InputStates::Login => {
+                let res = self.auth_window.get_input_values();
+                // todo handle incorrect username/password
+                self.login(&res["username"], &res["password"]).expect("Failed to login");
+                auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
+                self.chats = Self::load_chats(&mut self.api_client);
+                self.contacts = Self::load_contacts(&mut self.api_client);
+                self.active_input_state = InputStates::SearchChat;
+            },
+            InputStates::SearchChat => unimplemented!(),
+            InputStates::EnterMessage => unimplemented!(),
+        }
+    }
+
+    pub fn load_chats(api_client: &mut api::Client) -> StatefulList<StatefulChat> {
+        let chats = api_client.get_chats().unwrap();
+        StatefulList::with_items(
+            chats
+                .into_iter()
+                .map(StatefulChat::from_chat)
+                .collect(),
+        )
+    }
+
+    pub fn load_contacts(api_client: &mut api::Client) -> HashMap<String, Contact> {
+        api_client.get_contacts().unwrap()
+    }
 }
 
 pub enum InputStates {
     Login,
     SearchChat,
     EnterMessage,
-}
-
-pub fn process_input(app: &mut App) {
-    if let Event::Key(key) = event::read().expect("Failed to read key event") {
-        if key.kind == KeyEventKind::Press {
-            match key.code {
-                // KeyCode::Enter => app.submit(),
-                KeyCode::Char(to_insert) => {
-                    app.enter_char(to_insert);
-                }
-                KeyCode::Backspace => {
-                    app.delete_char();
-                }
-                KeyCode::Left => {
-                    app.move_cursor_left();
-                }
-                KeyCode::Right => {
-                    app.move_cursor_right();
-                }
-                // KeyCode::Esc => {
-                //     app.switch_to_previous_input();
-                // }
-                _ => {}
-            }
-        }
-    }
-}
-
-pub trait InputEntity {
-    fn enter_char(&mut self, new_char: char);
-    fn delete_char(&mut self);
-    fn move_cursor_left(&mut self);
-    fn move_cursor_right(&mut self);
-    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize;
-    fn reset_cursor(&mut self);
-    fn switch_to_next_input(&mut self);
 }

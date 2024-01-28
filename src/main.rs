@@ -2,7 +2,7 @@ use anyhow::Result;
 use crate::app::App;
 use crate::event::Event;
 use crate::ui::tui;
-use crate::update::update;
+use crate::input::process_input;
 
 mod api;
 mod app;
@@ -10,13 +10,13 @@ mod chat;
 mod constants;
 mod event;
 mod helpers;
-mod session;
+mod auth;
 mod ui;
-mod update;
+mod input;
 mod contact;
 
 fn main() -> Result<()> {
-    let mut app = App::new();
+    let mut app = App::new(api::Client::new(auth::load_auth_tokens()));
     let mut tui = tui::build_tui();
 
     tui.enter()?;
@@ -26,7 +26,7 @@ fn main() -> Result<()> {
 
         match tui.events.next()? {
             Event::Tick => {}
-            Event::Key(key_event) => update(&mut app, key_event),
+            Event::Key(key_event) => process_input(&mut app, key_event),
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
         };

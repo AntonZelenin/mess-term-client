@@ -1,4 +1,5 @@
-use crate::app::InputEntity;
+use std::collections::HashMap;
+use crate::input::InputEntity;
 
 // todo why all this in states? Bad place, bad name
 pub struct AuthWindowState {
@@ -89,6 +90,13 @@ impl InputEntity for AuthWindowState {
 impl AuthWindowState {
     pub fn get_cursor_position(&self) -> usize {
         self.cursor_position
+    }
+
+    pub fn get_input_values(&self) -> HashMap<String, String> {
+        let mut input_values = HashMap::new();
+        input_values.insert("username".to_string(), self.username_input.clone());
+        input_values.insert("password".to_string(), self.actual_password_input.clone());
+        input_values
     }
 
     fn get_active_input_mut(&mut self) -> &mut String {
