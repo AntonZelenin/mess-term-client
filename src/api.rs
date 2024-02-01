@@ -59,8 +59,7 @@ impl Client {
     }
 
     pub fn get_chats(&mut self) -> Result<Vec<Chat>, String> {
-        // todo url build is temporary, improve
-        return match self.post(&format!("http://{}/chats", APP_SERVER_API_URL)) {
+        return match self.post(&format!("http://{}/chats", APP_SERVER_API_URL), vec![]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
@@ -74,9 +73,8 @@ impl Client {
         };
     }
 
-    pub fn get_contacts(&mut self) -> Result<HashMap<String, Contact>, String> {
-        // todo url build is temporary, improve
-        return match self.post(&format!("http://{}/contacts", APP_SERVER_API_URL)) {
+    pub fn get_contacts(&mut self) -> Result<Vec<Contact>, String> {
+        return match self.get(&format!("http://{}/contacts", APP_SERVER_API_URL), vec![]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
@@ -88,6 +86,63 @@ impl Client {
                 Err(e)
             }
         };
+    }
+
+    pub fn search_chats(&mut self, username: String) -> Result<Vec<Chat>, String> {
+        return match self.get(&format!("{}/chats", APP_SERVER_API_URL), vec![("username".parse().unwrap(), username)]) {
+            Ok(res) => {
+                let data = res.json::<serde_json::Value>()
+                    .map_err(|e| e.to_string())?;
+                let chats: Vec<Chat> = serde_json::from_str(&data["chats"].to_string()).unwrap();
+                Ok(chats)
+            }
+            Err(e) => {
+                // todo logger.error(e);
+                Err(e)
+            }
+        };
+    }
+
+    fn post(&mut self, base_url: &str, query_params: Vec<(String, String)>) -> Result<reqwest::blocking::Response, String> {
+        let url = reqwest::Url::parse_with_params(base_url, &query_params).map_err(|e| e.to_string())?;
+        let res = self.
+            client
+            .post(url)
+            .header("Authorization", self.get_authorization_header())
+            .send()
+            .map_err(|e| e.to_string())?;
+
+        if res.status() == reqwest::StatusCode::from_u16(HTTP_LOGIN_EXPIRED_STATUS_CODE).unwrap() {
+            return self.refresh_token().and_then(|_| self.post(base_url, vec![]));
+        }
+        if !res.status().is_success() {
+            let data = res.json::<serde_json::Value>()
+                .map_err(|e| e.to_string())?;
+            return Err(data["message"].to_string());
+        }
+
+        Ok(res)
+    }
+
+    fn get(&mut self, base_url: &str, query_params: Vec<(String, String)>) -> Result<reqwest::blocking::Response, String> {
+        let url = reqwest::Url::parse_with_params(base_url, &query_params).map_err(|e| e.to_string())?;
+        let res = self.
+            client
+            .get(url)
+            .header("Authorization", self.get_authorization_header())
+            .send()
+            .map_err(|e| e.to_string())?;
+
+        if res.status() == reqwest::StatusCode::from_u16(HTTP_LOGIN_EXPIRED_STATUS_CODE).unwrap() {
+            return self.refresh_token().and_then(|_| self.post(base_url, vec![]));
+        }
+        if !res.status().is_success() {
+            let data = res.json::<serde_json::Value>()
+                .map_err(|e| e.to_string())?;
+            return Err(data["message"].to_string());
+        }
+
+        Ok(res)
     }
 
     pub fn refresh_token(&mut self) -> Result<(), String> {
@@ -121,27 +176,7 @@ impl Client {
         Ok(())
     }
 
-    pub fn get_auth_tokens(&self) -> Option<AuthTokens> {
-        self.auth_tokens.clone()
-    }
-
-    fn post(&mut self, url: &str) -> Result<reqwest::blocking::Response, String> {
-        let res = self.
-            client
-            .post(url)
-            .header("Authorization", format!("Token {}", self.auth_tokens.as_ref().expect("Unauthenticated").token))
-            .send()
-            .map_err(|e| e.to_string())?;
-
-        if res.status() == reqwest::StatusCode::from_u16(HTTP_LOGIN_EXPIRED_STATUS_CODE).unwrap() {
-            return self.refresh_token().and_then(|_| self.post(url));
-        }
-        if !res.status().is_success() {
-            let data = res.json::<serde_json::Value>()
-                .map_err(|e| e.to_string())?;
-            return Err(data["message"].to_string());
-        }
-
-        Ok(res)
+    fn get_authorization_header(&mut self) -> String {
+        format!("Bearer {}", self.auth_tokens.as_ref().expect("Unauthenticated").token)
     }
 }

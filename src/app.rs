@@ -4,13 +4,14 @@ use crate::chat::Chat;
 use crate::contact::Contact;
 use crate::helpers::list::StatefulList;
 use crate::input::InputEntity;
-use crate::ui::states::AuthWindowState;
+use crate::ui::states::{AuthWindowState, SearchInputState};
 use crate::ui::chat::StatefulChat;
 
 pub struct App {
     pub chats: StatefulList<StatefulChat>,
     pub contacts: HashMap<String, Contact>,
     pub auth_window: AuthWindowState,
+    pub search_input: SearchInputState,
     pub active_input_state: InputStates,
     api_client: api::Client,
     should_quit: bool,
@@ -32,6 +33,7 @@ impl App {
             chats: stateful_chats,
             contacts,
             auth_window: AuthWindowState::default(),
+            search_input: SearchInputState::default(),
             active_input_state: if !api_client.is_authenticated() { InputStates::Login } else { InputStates::SearchChat },
             api_client,
             should_quit: false,
@@ -60,10 +62,10 @@ impl App {
         self.chats.push(StatefulChat::from_chat(chat));
     }
 
-    fn get_active_input_state<'a>(&'a mut self) -> &'a mut dyn InputEntity {
+    fn get_active_input_state(&mut self) -> &mut dyn InputEntity {
         match self.active_input_state {
             InputStates::Login => &mut self.auth_window,
-            InputStates::SearchChat => unimplemented!(),
+            InputStates::SearchChat => &mut self.search_input,
             InputStates::EnterMessage => unimplemented!(),
         }
     }
@@ -92,19 +94,35 @@ impl App {
         match self.active_input_state {
             InputStates::Login => {
                 let res = self.auth_window.get_input_values();
-                // todo handle incorrect username/password
-                self.login(&res["username"], &res["password"]).expect("Failed to login");
-                auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
+
+                match self.api_client.login(&res["username"], &res["password"]) {
+                    Ok(session) => {
+                         auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
                 self.contacts = Self::load_contacts(&mut self.api_client);
                 self.chats = Self::load_chats(&mut self.api_client);
                 self.active_input_state = InputStates::SearchChat;
-            },
-            InputStates::SearchChat => unimplemented!(),
+                    }
+                    Err(e) => {
+                        self.auth_window.error_message = e;
+                    }
+                }
+            }
+            InputStates::SearchChat => {
+                let search_query = self.search_input.input.clone();
+                let chats = self.api_client.search_chats(search_query).unwrap();
+
+                self.chats = StatefulList::with_items(
+                    chats
+                        .into_iter()
+                        .map(StatefulChat::from_chat)
+                        .collect(),
+                );
+            }
             InputStates::EnterMessage => unimplemented!(),
         }
     }
 
-    pub fn load_chats(api_client: &mut api::Client) -> StatefulList<StatefulChat> {
+     pub fn load_chats(api_client: &mut api::Client) -> StatefulList<StatefulChat> {
         let chats = api_client.get_chats().unwrap();
         StatefulList::with_items(
             chats
