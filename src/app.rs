@@ -96,11 +96,13 @@ impl App {
                 let res = self.auth_window.get_input_values();
 
                 match self.api_client.login(&res["username"], &res["password"]) {
-                    Ok(session) => {
-                         auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
-                self.contacts = Self::load_contacts(&mut self.api_client);
-                self.chats = Self::load_chats(&mut self.api_client);
-                self.active_input_state = InputStates::SearchChat;
+                    Ok(_) => {
+                        auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
+
+                        self.contacts = Self::load_contacts(&mut self.api_client);
+                        self.chats = Self::load_chats(&mut self.api_client);
+
+                        self.active_input_state = InputStates::SearchChat;
                     }
                     Err(e) => {
                         self.auth_window.error_message = e;

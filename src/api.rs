@@ -21,6 +21,10 @@ impl Client {
         }
     }
 
+    pub fn get_auth_tokens(&self) -> Option<AuthTokens> {
+        self.auth_tokens.clone()
+    }
+
     pub fn login(&mut self, username: &str, password: &str) -> Result<(), String> {
         let form_params = [
             ("username", username),
@@ -59,7 +63,7 @@ impl Client {
     }
 
     pub fn get_chats(&mut self) -> Result<Vec<Chat>, String> {
-        return match self.post(&format!("http://{}/chats", APP_SERVER_API_URL), vec![]) {
+        match self.post(&format!("http://{}/chats", APP_SERVER_API_URL), vec![]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
@@ -70,11 +74,11 @@ impl Client {
                 // todo logger.error(e);
                 Err(e)
             }
-        };
+        }
     }
 
-    pub fn get_contacts(&mut self) -> Result<Vec<Contact>, String> {
-        return match self.get(&format!("http://{}/contacts", APP_SERVER_API_URL), vec![]) {
+    pub fn get_contacts(&mut self) -> Result<HashMap<String, Contact>, String> {
+        match self.get(&format!("http://{}/contacts", APP_SERVER_API_URL), vec![]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
@@ -85,11 +89,11 @@ impl Client {
                 // todo logger.error(e);
                 Err(e)
             }
-        };
+        }
     }
 
     pub fn search_chats(&mut self, username: String) -> Result<Vec<Chat>, String> {
-        return match self.get(&format!("{}/chats", APP_SERVER_API_URL), vec![("username".parse().unwrap(), username)]) {
+        match self.get(&format!("{}/chats", APP_SERVER_API_URL), vec![("username".parse().unwrap(), username)]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
@@ -100,7 +104,7 @@ impl Client {
                 // todo logger.error(e);
                 Err(e)
             }
-        };
+        }
     }
 
     fn post(&mut self, base_url: &str, query_params: Vec<(String, String)>) -> Result<reqwest::blocking::Response, String> {
