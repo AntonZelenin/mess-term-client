@@ -51,7 +51,7 @@ impl EventHandler {
                             CrosstermEvent::Resize(w, h) => {
                                 sender.send(Event::Resize(w, h))
                             }
-                            _ => unimplemented!(),
+                            _ => Ok(()),
                         }
                             .expect("failed to send terminal event")
                     }

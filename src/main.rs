@@ -10,13 +10,13 @@ mod chat;
 mod constants;
 mod event;
 mod helpers;
-mod session;
+mod auth;
 mod ui;
 mod input;
 mod contact;
 
 fn main() -> Result<()> {
-    let mut app = App::new();
+    let mut app = App::new(api::Client::new(auth::load_auth_tokens()));
     let mut tui = tui::build_tui();
 
     tui.enter()?;

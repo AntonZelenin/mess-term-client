@@ -221,7 +221,7 @@ fn build_chats(chats: &[StatefulChat], fg_color: Color) -> List {
 fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
     let paragraph = match app.is_authenticated() {
         true => {
-            Paragraph::new("Press `Esc`, `Ctrl-C` or `q` to stop running.")
+            Paragraph::new("Press `Ctrl-C` to quit.")
         }
         false => {
             Paragraph::new("`Enter` - submit data, `Tab` - switch input")

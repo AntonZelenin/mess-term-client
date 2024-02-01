@@ -2,6 +2,16 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::app::App;
 
+pub trait InputEntity {
+    fn enter_char(&mut self, new_char: char);
+    fn delete_char(&mut self);
+    fn move_cursor_left(&mut self);
+    fn move_cursor_right(&mut self);
+    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize;
+    fn reset_cursor(&mut self);
+    fn switch_to_next_input(&mut self);
+}
+
 pub fn process(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
         // KeyCode::Esc | KeyCode::Char('q') => app.quit(),
