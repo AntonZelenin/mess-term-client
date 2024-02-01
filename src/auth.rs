@@ -32,13 +32,19 @@ pub fn load_auth_tokens() -> Option<AuthTokens> {
     Some(AuthTokens::new(&token, &refresh_token))
 }
 
-pub fn store_auth_tokens(session: &AuthTokens) {
+pub fn store_auth_tokens(tokens: &AuthTokens) {
     let token_file_path = get_token_file_path();
     let refresh_token_file_path = get_refresh_token_file_path();
+    let creds_dir = get_credentials_dir();
 
-    fs::write(token_file_path, &session.token)
+    if !get_credentials_dir().exists() {
+        fs::create_dir(creds_dir)
+            .expect("Failed to create the credentials directory");
+    }
+
+    fs::write(token_file_path, &tokens.token)
         .expect("Failed to write the token file");
-    fs::write(refresh_token_file_path, &session.refresh_token)
+    fs::write(refresh_token_file_path, &tokens.refresh_token)
         .expect("Failed to write the refresh token file");
 }
 

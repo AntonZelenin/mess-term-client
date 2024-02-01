@@ -5,8 +5,9 @@ use crate::contact::Contact;
 use crate::auth::AuthTokens;
 
 // todo https
-pub const AUTH_SERVER_API_URL: &str = "http://localhost:8000/api/v1";
-pub const APP_SERVER_API_URL: &str = "localhost:8800/api/v1";
+pub const AUTH_SERVICE_API_URL: &str = "localhost:8000/api/auth/v1";
+pub const USER_SERVICE_API_URL: &str = "localhost:8800/api/user/v1";
+pub const MESSAGE_SERVICE_API_URL: &str = "localhost:8800/api/message/v1";
 
 pub struct Client {
     client: reqwest::blocking::Client,
@@ -32,7 +33,7 @@ impl Client {
         ];
         let res = self.
             client
-            .post(&format!("{}/login", AUTH_SERVER_API_URL))
+            .post(&format!("http://{}/login", AUTH_SERVICE_API_URL))
             .form(&form_params)
             .send()
             .map_err(|e| e.to_string())?;
@@ -63,7 +64,7 @@ impl Client {
     }
 
     pub fn get_chats(&mut self) -> Result<Vec<Chat>, String> {
-        match self.post(&format!("http://{}/chats", APP_SERVER_API_URL), vec![]) {
+        match self.post(&format!("http://{}/chats", USER_SERVICE_API_URL), vec![]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
@@ -78,7 +79,7 @@ impl Client {
     }
 
     pub fn get_contacts(&mut self) -> Result<HashMap<String, Contact>, String> {
-        match self.get(&format!("http://{}/contacts", APP_SERVER_API_URL), vec![]) {
+        match self.get(&format!("http://{}/contacts", USER_SERVICE_API_URL), vec![]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
@@ -93,7 +94,7 @@ impl Client {
     }
 
     pub fn search_chats(&mut self, username: String) -> Result<Vec<Chat>, String> {
-        match self.get(&format!("{}/chats", APP_SERVER_API_URL), vec![("username".parse().unwrap(), username)]) {
+        match self.get(&format!("{}/chats", USER_SERVICE_API_URL), vec![("username".parse().unwrap(), username)]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
@@ -108,7 +109,7 @@ impl Client {
     }
 
     fn post(&mut self, base_url: &str, query_params: Vec<(String, String)>) -> Result<reqwest::blocking::Response, String> {
-        let url = reqwest::Url::parse_with_params(base_url, &query_params).map_err(|e| e.to_string())?;
+        let url = reqwest::Url::parse_with_params(base_url, query_params).map_err(|e| e.to_string())?;
         let res = self.
             client
             .post(url)
@@ -129,7 +130,7 @@ impl Client {
     }
 
     fn get(&mut self, base_url: &str, query_params: Vec<(String, String)>) -> Result<reqwest::blocking::Response, String> {
-        let url = reqwest::Url::parse_with_params(base_url, &query_params).map_err(|e| e.to_string())?;
+        let url = reqwest::Url::parse_with_params(base_url, query_params).map_err(|e| e.to_string())?;
         let res = self.
             client
             .get(url)
@@ -155,7 +156,7 @@ impl Client {
         ];
         let res = self.
             client
-            .post(&format!("{}/refresh-token", AUTH_SERVER_API_URL))
+            .post(&format!("{}/refresh-token", AUTH_SERVICE_API_URL))
             .form(&form_params)
             .send()
             .map_err(|e| e.to_string())?;
