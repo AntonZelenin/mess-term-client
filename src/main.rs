@@ -2,7 +2,7 @@ use anyhow::Result;
 use crate::app::App;
 use crate::event::Event;
 use crate::ui::tui;
-use crate::update::update;
+use crate::input::process;
 
 mod api;
 mod app;
@@ -12,7 +12,7 @@ mod event;
 mod helpers;
 mod session;
 mod ui;
-mod update;
+mod input;
 mod contact;
 
 fn main() -> Result<()> {
@@ -26,7 +26,7 @@ fn main() -> Result<()> {
 
         match tui.events.next()? {
             Event::Tick => {}
-            Event::Key(key_event) => update(&mut app, key_event),
+            Event::Key(key_event) => process(&mut app, key_event),
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
         };

@@ -5,13 +5,14 @@ use crate::chat::Chat;
 use crate::contact::Contact;
 use crate::helpers::list::StatefulList;
 use crate::session;
-use crate::ui::states::AuthWindowState;
+use crate::ui::states::{AuthWindowState, SearchInputState};
 use crate::ui::chat::StatefulChat;
 
 pub struct App {
     pub chats: StatefulList<StatefulChat>,
     pub contacts: Vec<Contact>,
     pub auth_window: AuthWindowState,
+    pub search_input: SearchInputState,
     pub active_input_state: InputStates,
     api_client: api::Client,
     should_quit: bool,
@@ -39,6 +40,7 @@ impl App {
             chats: stateful_chats,
             contacts,
             auth_window: AuthWindowState::default(),
+            search_input: SearchInputState::default(),
             active_input_state: if !api_client.is_authenticated() { InputStates::Login } else { InputStates::SearchChat },
             api_client,
             should_quit: false,
@@ -63,10 +65,10 @@ impl App {
         self.chats.push(StatefulChat::from_chat(chat));
     }
 
-    fn get_active_input_state<'a>(&'a mut self) -> &'a mut dyn InputEntity {
+    fn get_active_input_state(&mut self) -> &mut dyn InputEntity {
         match self.active_input_state {
             InputStates::Login => &mut self.auth_window,
-            InputStates::SearchChat => unimplemented!(),
+            InputStates::SearchChat => &mut self.search_input,
             InputStates::EnterMessage => unimplemented!(),
         }
     }
@@ -89,6 +91,48 @@ impl App {
 
     pub fn switch_to_next_input(&mut self) {
         self.get_active_input_state().switch_to_next_input();
+    }
+
+    pub fn submit(&mut self) {
+        match self.active_input_state {
+            InputStates::Login => {
+                let username = self.auth_window.username_input.clone();
+                let password = self.auth_window.password_input.clone();
+
+                match self.api_client.login(&username, &password) {
+                    Ok(session) => {
+                        session::save_session(&session);
+
+                        // todo duplicate
+                        let chats = self.api_client.get_chats().unwrap();
+                        self.chats = StatefulList::with_items(
+                            chats
+                                .into_iter()
+                                .map(StatefulChat::from_chat)
+                                .collect(),
+                        );
+                        self.contacts = self.api_client.get_contacts().unwrap();
+
+                        self.active_input_state = InputStates::SearchChat;
+                    }
+                    Err(e) => {
+                        self.auth_window.error_message = e;
+                    }
+                }
+            }
+            InputStates::SearchChat => {
+                let search_query = self.search_input.input.clone();
+                let chats = self.api_client.search_chats(search_query).unwrap();
+
+                self.chats = StatefulList::with_items(
+                    chats
+                        .into_iter()
+                        .map(StatefulChat::from_chat)
+                        .collect(),
+                );
+            }
+            InputStates::EnterMessage => unimplemented!(),
+        }
     }
 }
 

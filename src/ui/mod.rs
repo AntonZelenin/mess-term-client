@@ -8,7 +8,6 @@ use ratatui::widgets::*;
 
 use crate::app::App;
 use crate::constants::DEFAULT_THEME;
-use crate::helpers;
 use crate::helpers::list::StatefulList;
 use crate::ui::chat::StatefulChat;
 use crate::ui::states::AuthActiveInput;
@@ -25,14 +24,16 @@ pub fn render(app: &mut App, f: &mut Frame) {
 }
 
 fn render_auth(app: &mut App, f: &mut Frame) {
-    let auth_area = helpers::centered_rect(60, 70, f.size());
-    let input_are = Layout::default()
+    let auth_area = create_login_area(f.size());
+    let input_area = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(2),
             Constraint::Length(3),
             Constraint::Length(3),
-            Constraint::Length(2),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
         ])
         .horizontal_margin(1)
         .split(auth_area);
@@ -64,15 +65,22 @@ fn render_auth(app: &mut App, f: &mut Frame) {
                 .borders(Borders::ALL)
                 .title("Password")
         );
+    let error_message = Paragraph::new(app.auth_window.error_message.as_str())
+        .style(Style::default().fg(DEFAULT_THEME.error))
+        .block(
+            Block::default()
+        )
+        .alignment(Alignment::Center);
 
     f.render_widget(Clear, auth_area);
     f.render_widget(block, auth_area);
-    f.render_widget(username_input, input_are[1]);
-    f.render_widget(password_input, input_are[2]);
+    f.render_widget(username_input, input_area[1]);
+    f.render_widget(password_input, input_area[2]);
+    f.render_widget(error_message, input_area[4]);
 
     let active_input_area = match app.auth_window.active_input {
-        AuthActiveInput::Username => input_are[1],
-        AuthActiveInput::Password => input_are[2],
+        AuthActiveInput::Username => input_area[1],
+        AuthActiveInput::Password => input_area[2],
     };
     f.set_cursor(
         active_input_area.x + app.auth_window.get_cursor_position() as u16 + 1,
@@ -82,7 +90,100 @@ fn render_auth(app: &mut App, f: &mut Frame) {
 }
 
 fn render_main(app: &mut App, f: &mut Frame) {
-    let body_layout = Layout::default()
+    let (main_area, footer_area) = create_main_and_footer(f);
+    let (chats_area, messages_area) = create_chats_and_messages_areas(main_area);
+    let (search_area, chats_area) = create_search_and_chats_area(chats_area);
+
+    render_chats_area(app, f, chats_area, search_area);
+    render_message_area(app, f, messages_area);
+    render_footer(app, f, footer_area);
+}
+
+fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area: Rect) {
+    let search_input = Paragraph::new(app.search_input.input.as_str())
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .title("Search")
+        );
+
+    f.render_widget(search_input, search_area);
+    f.render_stateful_widget(
+        build_chats(&app.chats.items, get_main_color(app)),
+        chats_area,
+        &mut app.chats.state,
+    );
+}
+
+fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
+    let main_color = get_main_color(app);
+    if app.chats.state.selected().is_none() {
+        f.render_widget(
+            get_chat_hints(main_color),
+            messages_area,
+        );
+    } else {
+        f.render_widget(
+            build_messages(&app.chats, main_color),
+            messages_area,
+        );
+    }
+}
+
+fn render_footer(app: &App, f: &mut Frame, footer_area: Rect) {
+    f.render_widget(
+        get_app_hints(app),
+        footer_area,
+    );
+}
+
+pub fn create_login_area(r: Rect) -> Rect {
+    let percent_x = 60;
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(1),
+            Constraint::Length(11),
+            Constraint::Min(1),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
+}
+
+fn create_search_and_chats_area(chats_area: Rect) -> (Rect, Rect) {
+    let chats_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(1),
+        ])
+        .split(chats_area);
+    (chats_layout[0], chats_layout[1])
+}
+
+fn create_chats_and_messages_areas(main_area: Rect) -> (Rect, Rect) {
+    let main_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(vec![
+            Constraint::Percentage(25),
+            Constraint::Percentage(75),
+        ])
+        .split(main_area);
+
+    (main_layout[0], main_layout[1])
+}
+
+fn create_main_and_footer(f: &mut Frame) -> (Rect, Rect) {
+    let terminal_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Min(1),
@@ -90,42 +191,7 @@ fn render_main(app: &mut App, f: &mut Frame) {
         ])
         .split(f.size());
 
-    let main = &body_layout[0];
-    let footer_layout = &body_layout[1];
-
-    let main_layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(vec![
-            Constraint::Percentage(25),
-            Constraint::Percentage(75),
-        ])
-        .split(*main);
-
-    let chats_layout = &main_layout[0];
-    let messages_layout = &main_layout[1];
-
-    let main_color = get_main_color(app);
-
-    f.render_stateful_widget(
-        build_chats(&app.chats.items, main_color.clone()),
-        *chats_layout,
-        &mut app.chats.state,
-    );
-    if app.chats.state.selected().is_none() {
-        f.render_widget(
-            get_chat_hints(main_color.clone()),
-            *messages_layout,
-        );
-    } else {
-        f.render_widget(
-            build_messages(&app.chats, main_color.clone()),
-            *messages_layout,
-        );
-    }
-    f.render_widget(
-        get_app_hints(app),
-        *footer_layout,
-    );
+    (terminal_layout[0], terminal_layout[1])
 }
 
 fn get_main_color(app: &App) -> Color {
@@ -136,7 +202,7 @@ fn get_main_color(app: &App) -> Color {
     }
 }
 
-fn build_chats(chats: &Vec<StatefulChat>, fg_color: Color) -> List {
+fn build_chats(chats: &[StatefulChat], fg_color: Color) -> List {
     let items: Vec<ListItem> = chats
         .iter()
         // .flat_map(|s| vec![ListItem::new(*s), ListItem::new("")])
@@ -144,7 +210,7 @@ fn build_chats(chats: &Vec<StatefulChat>, fg_color: Color) -> List {
         .collect();
 
     List::new(items)
-        .block(Block::default().title("Chats").borders(Borders::ALL))
+        .block(Block::default().title("Chats").borders(Borders::ALL).border_type(BorderType::Rounded))
         .style(Style::default().fg(fg_color))
         .highlight_style(Style::default().add_modifier(Modifier::BOLD))
         .highlight_symbol(">")
