@@ -1,17 +1,19 @@
 use std::collections::HashMap;
+use crossterm::event::KeyEvent;
 use crate::{api, auth};
 use crate::chat::Chat;
 use crate::contact::Contact;
 use crate::helpers::list::StatefulList;
+use crate::input::entities::login::{LoginWindowEntity, LoginTabs};
+use crate::input::entities::search::SearchInputEntity;
 use crate::input::InputEntity;
-use crate::ui::states::{AuthWindowState, SearchInputState};
 use crate::ui::chat::StatefulChat;
 
 pub struct App {
     pub chats: StatefulList<StatefulChat>,
     pub contacts: HashMap<String, Contact>,
-    pub auth_window: AuthWindowState,
-    pub search_input: SearchInputState,
+    pub login_window: LoginWindowEntity,
+    pub search_input: SearchInputEntity,
     pub active_input_state: InputStates,
     api_client: api::Client,
     should_quit: bool,
@@ -32,8 +34,8 @@ impl App {
         Self {
             chats: stateful_chats,
             contacts,
-            auth_window: AuthWindowState::default(),
-            search_input: SearchInputState::default(),
+            login_window: LoginWindowEntity::default(),
+            search_input: SearchInputEntity::default(),
             active_input_state: if !api_client.is_authenticated() { InputStates::Login } else { InputStates::SearchChat },
             api_client,
             should_quit: false,
@@ -64,48 +66,25 @@ impl App {
 
     fn get_active_input_state(&mut self) -> &mut dyn InputEntity {
         match self.active_input_state {
-            InputStates::Login => &mut self.auth_window,
+            InputStates::Login => &mut self.login_window,
             InputStates::SearchChat => &mut self.search_input,
             InputStates::EnterMessage => unimplemented!(),
         }
     }
 
-    pub fn enter_char(&mut self, new_char: char) {
-        self.get_active_input_state().enter_char(new_char);
-    }
-
-    pub fn delete_char(&mut self) {
-        self.get_active_input_state().delete_char();
-    }
-
-    pub fn move_cursor_left(&mut self) {
-        self.get_active_input_state().move_cursor_left();
-    }
-
-    pub fn move_cursor_right(&mut self) {
-        self.get_active_input_state().move_cursor_right();
-    }
-
-    pub fn switch_to_next_input(&mut self) {
-        self.get_active_input_state().switch_to_next_input();
+    pub fn pass_input_to_active_entity(&mut self, key_event: KeyEvent) {
+        self.get_active_input_state().process_input(key_event);
     }
 
     pub fn submit(&mut self) {
         match self.active_input_state {
             InputStates::Login => {
-                let res = self.auth_window.get_input_values();
-
-                match self.api_client.login(&res["username"], &res["password"]) {
-                    Ok(_) => {
-                        auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
-
-                        // self.contacts = Self::load_contacts(&mut self.api_client);
-                        // self.chats = Self::load_chats(&mut self.api_client);
-
-                        self.active_input_state = InputStates::SearchChat;
+                match self.login_window.active_tab {
+                    LoginTabs::Login => {
+                        self.process_login();
                     }
-                    Err(e) => {
-                        self.auth_window.error_message = e;
+                    LoginTabs::Register => {
+                        self.process_register();
                     }
                 }
             }
@@ -124,7 +103,71 @@ impl App {
         }
     }
 
-     pub fn load_chats(api_client: &mut api::Client) -> StatefulList<StatefulChat> {
+    fn process_login(&mut self) {
+        let res = self.login_window.get_input_values();
+
+        match self.api_client.login(&res["username"], &res["password"]) {
+            Ok(_) => {
+                auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
+
+                // self.contacts = Self::load_contacts(&mut self.api_client);
+                // self.chats = Self::load_chats(&mut self.api_client);
+
+                self.active_input_state = InputStates::SearchChat;
+            }
+            Err(e) => {
+                self.login_window.login_error_message = e;
+            }
+        }
+    }
+
+    fn process_register(&mut self) {
+        let res = self.login_window.get_input_values();
+
+        let error = self.validate_register_input(&res);
+        if !error.is_empty() {
+            self.login_window.register_error_message = error;
+            return;
+        }
+
+        match self.api_client.register(&res["username"], &res["password"]) {
+            Ok(_) => {
+                auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
+
+                // self.contacts = Self::load_contacts(&mut self.api_client);
+                // self.chats = Self::load_chats(&mut self.api_client);
+
+                self.active_input_state = InputStates::SearchChat;
+            }
+            Err(e) => {
+                self.login_window.register_error_message = e;
+            }
+        }
+    }
+
+    fn validate_register_input(&self, input_values: &HashMap<String, String>) -> String {
+        // todo returning only one error message is temporary
+        let mut error_message = String::new();
+
+        if input_values["password"] != input_values["password_confirmation"] {
+            error_message.push_str("Passwords do not match.\n");
+            return error_message;
+        }
+
+        if input_values["password"].len() < 8 {
+            error_message.push_str("Password must be at least 8 characters long.\n");
+            return error_message;
+        }
+
+        if input_values["username"].len() < 3 {
+            error_message.push_str("Username must be at least 3 characters long.\n");
+            return error_message;
+        }
+
+        error_message
+    }
+
+    pub fn load_chats(api_client: &mut api::Client) -> StatefulList<StatefulChat> {
         let chats = api_client.get_chats().unwrap();
         StatefulList::with_items(
             chats

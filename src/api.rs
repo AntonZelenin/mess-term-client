@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use serde::Serialize;
 use crate::chat::Chat;
 use crate::constants::HTTP_LOGIN_EXPIRED_STATUS_CODE;
 use crate::contact::Contact;
@@ -6,12 +7,18 @@ use crate::auth::AuthTokens;
 
 // todo https
 pub const AUTH_SERVICE_API_URL: &str = "localhost:8000/api/auth/v1";
-pub const USER_SERVICE_API_URL: &str = "localhost:8800/api/user/v1";
-pub const MESSAGE_SERVICE_API_URL: &str = "localhost:8800/api/message/v1";
+pub const USER_SERVICE_API_URL: &str = "localhost:8000/api/user/v1";
+pub const MESSAGE_SERVICE_API_URL: &str = "localhost:8000/api/message/v1";
 
 pub struct Client {
     client: reqwest::blocking::Client,
     auth_tokens: Option<AuthTokens>,
+}
+
+#[derive(Serialize)]
+struct RegisterData {
+    username: String,
+    password: String,
 }
 
 impl Client {
@@ -27,13 +34,14 @@ impl Client {
     }
 
     pub fn login(&mut self, username: &str, password: &str) -> Result<(), String> {
+        let url = &format!("http://{}/login", AUTH_SERVICE_API_URL);
         let form_params = [
             ("username", username),
             ("password", password),
         ];
         let res = self.
             client
-            .post(&format!("http://{}/login", AUTH_SERVICE_API_URL))
+            .post(url)
             .form(&form_params)
             .send()
             .map_err(|e| e.to_string())?;
@@ -42,7 +50,49 @@ impl Client {
         let data = res.json::<serde_json::Value>()
             .map_err(|e| e.to_string())?;
         if !status.is_success() {
-            return Err(data["message"].to_string());
+            return Err(data["detail"].as_str().unwrap().to_string());
+        }
+
+        let jwt = data["access_token"].to_string();
+        let refresh_token = data["refresh_token"].to_string();
+        if jwt.is_empty() || refresh_token.is_empty() {
+            panic!("JWT or refresh token is empty");
+        }
+
+        let jwt = jwt.trim_matches('"').to_string();
+        let refresh_token = refresh_token.trim_matches('"').to_string();
+
+        self.auth_tokens = Some(AuthTokens::new(&jwt, &refresh_token));
+
+        Ok(())
+    }
+
+    pub fn register(&mut self, username: &str, password: &str) -> Result<(), String> {
+        let url = &format!("http://{}/users", USER_SERVICE_API_URL);
+        let register_data = RegisterData {
+            username: username.to_string(),
+            password: password.to_string(),
+        };
+        let res = self.
+            client
+            .post(url)
+            .json(&register_data)
+            .send()
+            .map_err(|e| e.to_string())?;
+
+        let status = res.status();
+        let data = res.json::<serde_json::Value>()
+            .map_err(|e| e.to_string())?;
+        if !status.is_success() {
+            let errors = data["errors"].as_object().unwrap();
+            return Err(
+                errors
+                    .values()
+                    .filter_map(|v| v.as_str())
+                    .map(|v| v.to_owned())
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            );
         }
 
         let jwt = data["access_token"].to_string();
