@@ -28,7 +28,7 @@ impl App {
 
         if api_client.is_authenticated() {
             // contacts = Self::load_contacts(&mut api_client);
-            // stateful_chats = Self::load_chats(&mut api_client);
+            stateful_chats = Self::load_chats(&mut api_client);
         }
 
         Self {
@@ -44,10 +44,6 @@ impl App {
 
     pub fn is_authenticated(&self) -> bool {
         self.api_client.is_authenticated()
-    }
-
-    pub fn login(&mut self, username: &str, password: &str) -> Result<(), String> {
-        self.api_client.login(username, password)
     }
 
     pub fn tick(&self) {}

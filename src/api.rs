@@ -114,11 +114,11 @@ impl Client {
     }
 
     pub fn get_chats(&mut self) -> Result<Vec<Chat>, String> {
-        match self.post(&format!("http://{}/chats", USER_SERVICE_API_URL), vec![]) {
+        match self.get(&format!("http://{}/chats", MESSAGE_SERVICE_API_URL), vec![]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
-                let chats: Vec<Chat> = serde_json::from_str(&data["chats"].to_string()).unwrap();
+                let chats: Vec<Chat> = serde_json::from_str(&data.to_string()).unwrap();
                 Ok(chats)
             }
             Err(e) => {
