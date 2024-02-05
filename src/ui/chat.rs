@@ -2,7 +2,7 @@ use crate::chat::{Chat, Message};
 use crate::helpers::list::StatefulList;
 
 pub struct StatefulChat {
-    pub id: u32,
+    pub id: Option<u32>,
     pub name: String,
     pub member_usernames: Vec<String>,
     pub messages: StatefulList<Message>,
@@ -19,6 +19,8 @@ impl StatefulChat {
     }
 
     pub fn add_message(&mut self, message: Message) {
+        assert!(self.id.is_some());
+
         self.messages.push(message);
     }
 }

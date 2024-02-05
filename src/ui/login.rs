@@ -53,7 +53,7 @@ fn render_login(app: &mut App, tabs: Tabs, f: &mut Frame) {
         .style(Style::default().fg(DEFAULT_THEME.fg).bg(DEFAULT_THEME.bg));
 
     let username_input = Paragraph::new(app.login_window.username_input.as_str())
-        .style(match app.login_window.active_input {
+        .style(match app.login_window.active_input_field {
             LoginActiveInput::Username => Style::default().fg(DEFAULT_THEME.active),
             LoginActiveInput::Password => Style::default().fg(DEFAULT_THEME.inactive),
             _ => unreachable!(),
@@ -64,7 +64,7 @@ fn render_login(app: &mut App, tabs: Tabs, f: &mut Frame) {
                 .title("Username")
         );
     let password_input = Paragraph::new(app.login_window.password_input.as_str())
-        .style(match app.login_window.active_input {
+        .style(match app.login_window.active_input_field {
             LoginActiveInput::Username => Style::default().fg(DEFAULT_THEME.inactive),
             LoginActiveInput::Password => Style::default().fg(DEFAULT_THEME.active),
             _ => unreachable!(),
@@ -88,7 +88,7 @@ fn render_login(app: &mut App, tabs: Tabs, f: &mut Frame) {
     f.render_widget(password_input, input_area[4]);
     f.render_widget(error_message, input_area[6]);
 
-    let active_input_area = match app.login_window.active_input {
+    let active_input_area = match app.login_window.active_input_field {
         LoginActiveInput::Username => input_area[3],
         LoginActiveInput::Password => input_area[4],
         _ => unreachable!(),
@@ -125,7 +125,7 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
         .style(Style::default().fg(DEFAULT_THEME.fg).bg(DEFAULT_THEME.bg));
 
     let username_input = Paragraph::new(app.login_window.register_username_input.as_str())
-        .style(match app.login_window.active_input {
+        .style(match app.login_window.active_input_field {
             LoginActiveInput::RegisterUsername => Style::default().fg(DEFAULT_THEME.active),
             _ => Style::default().fg(DEFAULT_THEME.inactive),
         })
@@ -135,7 +135,7 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
                 .title("Username")
         );
     let password_input = Paragraph::new(app.login_window.register_password_input.as_str())
-        .style(match app.login_window.active_input {
+        .style(match app.login_window.active_input_field {
             LoginActiveInput::RegisterPassword => Style::default().fg(DEFAULT_THEME.active),
             _ => Style::default().fg(DEFAULT_THEME.inactive),
         })
@@ -145,7 +145,7 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
                 .title("Password")
         );
     let password_confirmation_input = Paragraph::new(app.login_window.register_password_confirmation_input.as_str())
-        .style(match app.login_window.active_input {
+        .style(match app.login_window.active_input_field {
             LoginActiveInput::RegisterPasswordConfirmation => Style::default().fg(DEFAULT_THEME.active),
             _ => Style::default().fg(DEFAULT_THEME.inactive),
         })
@@ -169,7 +169,7 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
     f.render_widget(password_confirmation_input, input_area[6]);
     f.render_widget(error_message, input_area[8]);
 
-    let active_input_area = match app.login_window.active_input {
+    let active_input_area = match app.login_window.active_input_field {
         LoginActiveInput::RegisterUsername => input_area[3],
         LoginActiveInput::RegisterPassword => input_area[5],
         LoginActiveInput::RegisterPasswordConfirmation => input_area[6],

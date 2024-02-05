@@ -42,7 +42,12 @@ impl App {
         self.api_client.is_authenticated()
     }
 
-    pub fn tick(&self) {}
+    pub fn tick(&mut self) {
+        if self.api_client.get_auth_tokens().map_or(false, |t| t.dirty) {
+            auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
+            self.api_client.mark_tokens_not_dirty();
+        }
+    }
 
     pub fn quit(&mut self) {
         self.should_quit = true;
@@ -78,25 +83,22 @@ impl App {
             Windows::Main => {
                 match self.main_window.get_active_input_entity() {
                     window::main::ActiveInputEntity::SearchChats => {
-                       self.main_window.set_search_results(
-                           self.api_client.search_chats(self.main_window.get_active_input()).unwrap()
-                       );
+                        self.main_window.set_search_results(
+                            self.api_client.search_users(self.main_window.get_active_input()).unwrap()
+                        );
                     }
-                    window::main::ActiveInputEntity::EnterMessage => {
-
-                    },
+                    window::main::ActiveInputEntity::EnterMessage => {}
                 }
             }
         }
     }
 
     fn process_login(&mut self) {
+        self.login_window.login_error_message = String::new();
         let res = self.login_window.get_input_values();
 
         match self.api_client.login(&res["username"], &res["password"]) {
             Ok(_) => {
-                auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
-
                 // self.contacts = Self::load_contacts(&mut self.api_client);
                 self.main_window.add_chats(Self::load_chats(&mut self.api_client));
 
@@ -109,6 +111,7 @@ impl App {
     }
 
     fn process_register(&mut self) {
+        self.login_window.login_error_message = String::new();
         let res = self.login_window.get_input_values();
 
         let error = self.validate_register_input(&res);
@@ -119,10 +122,8 @@ impl App {
 
         match self.api_client.register(&res["username"], &res["password"]) {
             Ok(_) => {
-                auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
-
                 // self.contacts = Self::load_contacts(&mut self.api_client);
-                // self.chats = Self::load_chats(&mut self.api_client);
+                self.main_window.add_chats(Self::load_chats(&mut self.api_client));
 
                 self.active_window = Windows::Main;
             }

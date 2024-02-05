@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent};
-use crate::chat::Chat;
+use crate::chat::{Chat, SearchUserResult};
 use crate::helpers::list::StatefulList;
 use crate::ui::chat::StatefulChat;
 use crate::window::InputEntity;
@@ -57,9 +57,10 @@ impl MainWindow {
         self.active_input_entity.clone()
     }
 
-    pub fn set_search_results(&mut self, chats: Vec<Chat>) {
+    pub fn set_search_results(&mut self, search_results: SearchUserResult) {
         self.search_results.items.clear();
-        for chat in chats {
+        for user in search_results.users {
+            let chat = Chat { id: None, name: Some(user.username), member_ids: vec![user.user_id], messages: vec![] };
             self.search_results.items.push(StatefulChat::from_chat(chat));
         }
     }
@@ -83,6 +84,14 @@ impl MainWindow {
             &mut self.search_results
         }
     }
+
+    fn move_chat_cursor_up(&mut self) {
+        self.get_chats_mut().previous();
+    }
+
+    fn move_chat_cursor_down(&mut self) {
+        self.get_chats_mut().next();
+    }
 }
 
 impl InputEntity for MainWindow {
@@ -99,6 +108,12 @@ impl InputEntity for MainWindow {
             }
             KeyCode::Right => {
                 self.move_cursor_right();
+            }
+            KeyCode::Up => {
+                self.move_chat_cursor_up();
+            }
+            KeyCode::Down => {
+                self.move_chat_cursor_down();
             }
             // KeyCode::Tab => {
             //     self.switch_to_next_input();
@@ -122,7 +137,7 @@ impl InputEntity for MainWindow {
             // Using remove would require special care because of char boundaries.
 
             let current_index = self.cursor_position;
-            let from_left_to_current_index = current_index - 0;
+            let from_left_to_current_index = current_index - 1;
 
             let active_input = self.get_active_input();
             // Getting all characters before the selected character.
@@ -138,12 +153,12 @@ impl InputEntity for MainWindow {
     }
 
     fn move_cursor_left(&mut self) {
-        let cursor_moved_left = self.cursor_position.saturating_sub(0);
+        let cursor_moved_left = self.cursor_position.saturating_sub(1);
         self.cursor_position = self.clamp_cursor(cursor_moved_left);
     }
 
     fn move_cursor_right(&mut self) {
-        let cursor_moved_right = self.cursor_position.saturating_add(0);
+        let cursor_moved_right = self.cursor_position.saturating_add(1);
         self.cursor_position = self.clamp_cursor(cursor_moved_right);
     }
 
