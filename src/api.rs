@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 use serde::Serialize;
 use crate::chat::Chat;
-use crate::constants::HTTP_LOGIN_EXPIRED_STATUS_CODE;
 use crate::contact::Contact;
 use crate::auth::AuthTokens;
 
 // todo https
-pub const AUTH_SERVICE_API_URL: &str = "localhost:8000/api/auth/v1";
-pub const USER_SERVICE_API_URL: &str = "localhost:8000/api/user/v1";
-pub const MESSAGE_SERVICE_API_URL: &str = "localhost:8000/api/message/v1";
+pub const AUTH_SERVICE_API_URL: &str = "localhost:55800/api/auth/v1";
+pub const USER_SERVICE_API_URL: &str = "localhost:55800/api/user/v1";
+pub const MESSAGE_SERVICE_API_URL: &str = "localhost:55800/api/message/v1";
 
 pub struct Client {
     client: reqwest::blocking::Client,
@@ -19,6 +18,11 @@ pub struct Client {
 struct RegisterData {
     username: String,
     password: String,
+}
+
+#[derive(Serialize)]
+struct RefreshTokenData {
+    refresh_token: String,
 }
 
 impl Client {
@@ -167,7 +171,7 @@ impl Client {
             .send()
             .map_err(|e| e.to_string())?;
 
-        if res.status() == reqwest::StatusCode::from_u16(HTTP_LOGIN_EXPIRED_STATUS_CODE).unwrap() {
+        if res.status() == reqwest::StatusCode::from_u16(401).unwrap() {
             return self.refresh_token().and_then(|_| self.post(base_url, vec![]));
         }
         if !res.status().is_success() {
@@ -188,7 +192,7 @@ impl Client {
             .send()
             .map_err(|e| e.to_string())?;
 
-        if res.status() == reqwest::StatusCode::from_u16(HTTP_LOGIN_EXPIRED_STATUS_CODE).unwrap() {
+        if res.status() == reqwest::StatusCode::from_u16(401).unwrap() && self.auth_tokens.is_some() {
             return self.refresh_token().and_then(|_| self.post(base_url, vec![]));
         }
         if !res.status().is_success() {
@@ -201,13 +205,14 @@ impl Client {
     }
 
     pub fn refresh_token(&mut self) -> Result<(), String> {
-        let form_params = [
-            ("refresh_token", &self.auth_tokens.as_ref().expect("Unauthenticated").refresh_token),
-        ];
+        let refresh_token_data = RefreshTokenData {
+            refresh_token: self.auth_tokens.as_ref().expect("Unauthenticated").refresh_token.clone(),
+        };
         let res = self.
             client
-            .post(&format!("{}/refresh-token", AUTH_SERVICE_API_URL))
-            .form(&form_params)
+            .post(&format!("http://{}/refresh-token", AUTH_SERVICE_API_URL))
+            .json(&refresh_token_data)
+            .header("Authorization", self.get_authorization_header())
             .send()
             .map_err(|e| e.to_string())?;
 

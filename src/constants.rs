@@ -1,7 +1,5 @@
 use ratatui::prelude::Color;
 
-pub const HTTP_LOGIN_EXPIRED_STATUS_CODE: u16 = 440;
-
 pub struct Theme {
     pub fg: Color,
     pub bg: Color,

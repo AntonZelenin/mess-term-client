@@ -2,7 +2,7 @@ use anyhow::Result;
 use crate::app::App;
 use crate::event::Event;
 use crate::ui::tui;
-use crate::input::process;
+use crate::window::process;
 
 mod api;
 mod app;
@@ -12,7 +12,7 @@ mod event;
 mod helpers;
 mod auth;
 mod ui;
-mod input;
+mod window;
 mod contact;
 
 fn main() -> Result<()> {

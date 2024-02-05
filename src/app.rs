@@ -1,20 +1,17 @@
 use std::collections::HashMap;
 use crossterm::event::KeyEvent;
-use crate::{api, auth};
+use crate::{api, auth, window};
 use crate::chat::Chat;
 use crate::contact::Contact;
-use crate::helpers::list::StatefulList;
-use crate::input::entities::login::{LoginWindowEntity, LoginTabs};
-use crate::input::entities::search::SearchInputEntity;
-use crate::input::InputEntity;
-use crate::ui::chat::StatefulChat;
+use crate::window::InputEntity;
+use crate::window::login::{LoginTabs, LoginWindow};
+use crate::window::main::MainWindow;
 
 pub struct App {
-    pub chats: StatefulList<StatefulChat>,
-    pub contacts: HashMap<String, Contact>,
-    pub login_window: LoginWindowEntity,
-    pub search_input: SearchInputEntity,
-    pub active_input_state: InputStates,
+    pub login_window: LoginWindow,
+    pub main_window: MainWindow,
+    active_window: Windows,
+    contacts: HashMap<String, Contact>,
     api_client: api::Client,
     should_quit: bool,
 }
@@ -23,20 +20,19 @@ impl App {
     pub fn new(
         mut api_client: api::Client,
     ) -> Self {
-        let mut stateful_chats = StatefulList::new();
+        let mut chats = Vec::new();
         let mut contacts = HashMap::new();
 
         if api_client.is_authenticated() {
             // contacts = Self::load_contacts(&mut api_client);
-            stateful_chats = Self::load_chats(&mut api_client);
+            chats = Self::load_chats(&mut api_client);
         }
 
         Self {
-            chats: stateful_chats,
+            login_window: LoginWindow::default(),
+            main_window: MainWindow::new(chats),
+            active_window: if !api_client.is_authenticated() { Windows::Login } else { Windows::Main },
             contacts,
-            login_window: LoginWindowEntity::default(),
-            search_input: SearchInputEntity::default(),
-            active_input_state: if !api_client.is_authenticated() { InputStates::Login } else { InputStates::SearchChat },
             api_client,
             should_quit: false,
         }
@@ -56,25 +52,20 @@ impl App {
         self.should_quit
     }
 
-    pub fn add_chat(&mut self, chat: Chat) {
-        self.chats.push(StatefulChat::from_chat(chat));
-    }
-
-    fn get_active_input_state(&mut self) -> &mut dyn InputEntity {
-        match self.active_input_state {
-            InputStates::Login => &mut self.login_window,
-            InputStates::SearchChat => &mut self.search_input,
-            InputStates::EnterMessage => unimplemented!(),
+    fn get_active_input_entity(&mut self) -> &mut dyn InputEntity {
+        match self.active_window {
+            Windows::Login => &mut self.login_window,
+            Windows::Main => &mut self.main_window,
         }
     }
 
     pub fn pass_input_to_active_entity(&mut self, key_event: KeyEvent) {
-        self.get_active_input_state().process_input(key_event);
+        self.get_active_input_entity().process_input(key_event);
     }
 
     pub fn submit(&mut self) {
-        match self.active_input_state {
-            InputStates::Login => {
+        match self.active_window {
+            Windows::Login => {
                 match self.login_window.active_tab {
                     LoginTabs::Login => {
                         self.process_login();
@@ -84,18 +75,18 @@ impl App {
                     }
                 }
             }
-            InputStates::SearchChat => {
-                let search_query = self.search_input.input.clone();
-                let chats = self.api_client.search_chats(search_query).unwrap();
+            Windows::Main => {
+                match self.main_window.get_active_input_entity() {
+                    window::main::ActiveInputEntity::SearchChats => {
+                       self.main_window.set_search_results(
+                           self.api_client.search_chats(self.main_window.get_active_input()).unwrap()
+                       );
+                    }
+                    window::main::ActiveInputEntity::EnterMessage => {
 
-                self.chats = StatefulList::with_items(
-                    chats
-                        .into_iter()
-                        .map(StatefulChat::from_chat)
-                        .collect(),
-                );
+                    },
+                }
             }
-            InputStates::EnterMessage => unimplemented!(),
         }
     }
 
@@ -107,9 +98,9 @@ impl App {
                 auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
 
                 // self.contacts = Self::load_contacts(&mut self.api_client);
-                // self.chats = Self::load_chats(&mut self.api_client);
+                self.main_window.add_chats(Self::load_chats(&mut self.api_client));
 
-                self.active_input_state = InputStates::SearchChat;
+                self.active_window = Windows::Main;
             }
             Err(e) => {
                 self.login_window.login_error_message = e;
@@ -133,7 +124,7 @@ impl App {
                 // self.contacts = Self::load_contacts(&mut self.api_client);
                 // self.chats = Self::load_chats(&mut self.api_client);
 
-                self.active_input_state = InputStates::SearchChat;
+                self.active_window = Windows::Main;
             }
             Err(e) => {
                 self.login_window.register_error_message = e;
@@ -163,14 +154,8 @@ impl App {
         error_message
     }
 
-    pub fn load_chats(api_client: &mut api::Client) -> StatefulList<StatefulChat> {
-        let chats = api_client.get_chats().unwrap();
-        StatefulList::with_items(
-            chats
-                .into_iter()
-                .map(StatefulChat::from_chat)
-                .collect(),
-        )
+    pub fn load_chats(api_client: &mut api::Client) -> Vec<Chat> {
+        api_client.get_chats().unwrap()
     }
 
     pub fn load_contacts(api_client: &mut api::Client) -> HashMap<String, Contact> {
@@ -178,8 +163,7 @@ impl App {
     }
 }
 
-pub enum InputStates {
+pub enum Windows {
     Login,
-    SearchChat,
-    EnterMessage,
+    Main,
 }

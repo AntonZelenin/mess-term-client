@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent};
-use crate::input::InputEntity;
+use crate::window::InputEntity;
 
 pub enum LoginActiveInput {
     Username,
@@ -17,7 +17,7 @@ pub enum LoginTabs {
 }
 
 // todo why all this in states? Bad place, bad name
-pub struct LoginWindowEntity {
+pub struct LoginWindow {
     // Login
     pub username_input: String,
     pub password_input: String,
@@ -38,7 +38,7 @@ pub struct LoginWindowEntity {
     actual_register_password_confirmation_input: String,
 }
 
-impl Default for LoginWindowEntity {
+impl Default for LoginWindow {
     fn default() -> Self {
         Self {
             username_input: String::new(),
@@ -60,7 +60,7 @@ impl Default for LoginWindowEntity {
     }
 }
 
-impl InputEntity for LoginWindowEntity {
+impl InputEntity for LoginWindow {
     fn process_input(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char(to_insert) => {
@@ -173,7 +173,7 @@ impl InputEntity for LoginWindowEntity {
     }
 }
 
-impl LoginWindowEntity {
+impl LoginWindow {
     pub fn get_cursor_position(&self) -> usize {
         self.cursor_position
     }

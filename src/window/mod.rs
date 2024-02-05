@@ -2,7 +2,8 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::app::App;
 
-pub mod entities;
+pub mod login;
+pub mod main;
 
 pub trait InputEntity {
     fn process_input(&mut self, key_event: KeyEvent);
