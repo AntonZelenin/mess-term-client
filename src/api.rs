@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use serde::Serialize;
+use crate::auth;
 use crate::chat::{Chat, SearchUserResult};
 use crate::contact::Contact;
 use crate::auth::AuthTokens;
@@ -12,6 +13,7 @@ pub const MESSAGE_SERVICE_API_URL: &str = "localhost:55800/api/message/v1";
 pub struct Client {
     client: reqwest::blocking::Client,
     auth_tokens: Option<AuthTokens>,
+    auth_tokens_store_callback: Box<dyn Fn(&AuthTokens)>,
 }
 
 #[derive(Serialize)]
@@ -30,6 +32,7 @@ impl Client {
         Self {
             client: reqwest::blocking::Client::new(),
             auth_tokens,
+            auth_tokens_store_callback: Box::new(auth::store_auth_tokens),
         }
     }
 
@@ -66,7 +69,7 @@ impl Client {
         let jwt = jwt.trim_matches('"').to_string();
         let refresh_token = refresh_token.trim_matches('"').to_string();
 
-        self.auth_tokens = Some(AuthTokens::new(&jwt, &refresh_token, true));
+        self.set_auth_tokens(AuthTokens::new(&jwt, &refresh_token));
 
         Ok(())
     }
@@ -108,7 +111,7 @@ impl Client {
         let jwt = jwt.trim_matches('"').to_string();
         let refresh_token = refresh_token.trim_matches('"').to_string();
 
-        self.auth_tokens = Some(AuthTokens::new(&jwt, &refresh_token, true));
+        self.set_auth_tokens(AuthTokens::new(&jwt, &refresh_token));
 
         Ok(())
     }
@@ -161,10 +164,6 @@ impl Client {
                 Err(e)
             }
         }
-    }
-
-    pub fn mark_tokens_not_dirty(&mut self) {
-        self.auth_tokens.as_mut().expect("Unauthenticated").dirty = false;
     }
 
     fn post(&mut self, base_url: &str, query_params: Vec<(String, String)>) -> Result<reqwest::blocking::Response, String> {
@@ -238,8 +237,13 @@ impl Client {
         let jwt = jwt.trim_matches('"').to_string();
         let refresh_token = refresh_token.trim_matches('"').to_string();
 
-        self.auth_tokens = Some(AuthTokens::new(&jwt, &refresh_token, true));
+        self.set_auth_tokens(AuthTokens::new(&jwt, &refresh_token));
         Ok(())
+    }
+
+    fn set_auth_tokens(&mut self, tokens: AuthTokens) {
+        self.auth_tokens = Some(tokens.clone());
+        (self.auth_tokens_store_callback)(&tokens);
     }
 
     fn get_authorization_header(&mut self) -> String {

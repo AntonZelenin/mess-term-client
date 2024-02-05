@@ -42,12 +42,7 @@ impl App {
         self.api_client.is_authenticated()
     }
 
-    pub fn tick(&mut self) {
-        if self.api_client.get_auth_tokens().map_or(false, |t| t.dirty) {
-            auth::store_auth_tokens(&self.api_client.get_auth_tokens().expect("Tried to save session, but it's None"));
-            self.api_client.mark_tokens_not_dirty();
-        }
-    }
+    pub fn tick(&mut self) {}
 
     pub fn quit(&mut self) {
         self.should_quit = true;

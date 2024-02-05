@@ -70,7 +70,7 @@ impl MainWindow {
     }
 
     pub fn get_chats(&self) -> &StatefulList<StatefulChat> {
-        if self.search_input.is_empty() {
+        if self.search_results.is_empty() {
             &self.chats
         } else {
             &self.search_results
@@ -78,7 +78,7 @@ impl MainWindow {
     }
 
     pub fn get_chats_mut(&mut self) -> &mut StatefulList<StatefulChat> {
-        if self.search_input.is_empty() {
+        if self.search_results.is_empty() {
             &mut self.chats
         } else {
             &mut self.search_results
@@ -91,6 +91,12 @@ impl MainWindow {
 
     fn move_chat_cursor_down(&mut self) {
         self.get_chats_mut().next();
+    }
+
+    fn reset_search(&mut self) {
+        self.search_results.items.clear();
+        self.search_input.clear();
+        self.reset_cursor();
     }
 }
 
@@ -114,6 +120,9 @@ impl InputEntity for MainWindow {
             }
             KeyCode::Down => {
                 self.move_chat_cursor_down();
+            }
+            KeyCode::Esc => {
+                self.reset_search();
             }
             // KeyCode::Tab => {
             //     self.switch_to_next_input();

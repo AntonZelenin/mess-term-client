@@ -5,15 +5,13 @@ use std::path::{Path, PathBuf};
 pub struct AuthTokens {
     pub token: String,
     pub refresh_token: String,
-    pub dirty: bool,
 }
 
 impl AuthTokens {
-    pub fn new(token: &str, refresh_token: &str, dirty: bool) -> Self {
+    pub fn new(token: &str, refresh_token: &str) -> Self {
         Self {
             token: token.to_string(),
             refresh_token: refresh_token.to_string(),
-            dirty,
         }
     }
 }
@@ -31,7 +29,7 @@ pub fn load_auth_tokens() -> Option<AuthTokens> {
     let refresh_token = fs::read_to_string(refresh_token_file_path)
         .expect("Failed to read the refresh token file");
 
-    Some(AuthTokens::new(&token, &refresh_token, false))
+    Some(AuthTokens::new(&token, &refresh_token))
 }
 
 pub fn store_auth_tokens(tokens: &AuthTokens) {
