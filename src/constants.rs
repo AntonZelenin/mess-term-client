@@ -8,7 +8,7 @@ pub struct Theme {
     pub error: Color,
 }
 
-pub const DEFAULT_THEME: Theme = Theme {
+pub const THEME: Theme = Theme {
     fg: Color::Rgb(147, 183, 190),
     bg: Color::Rgb(40, 42, 54),
     active: Color::Rgb(212, 245, 245),

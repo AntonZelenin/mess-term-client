@@ -3,7 +3,7 @@ use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::prelude::{Line, Style, Stylize};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Tabs};
 use crate::app::App;
-use crate::constants::DEFAULT_THEME;
+use crate::constants::THEME;
 use crate::window::login::{LoginActiveInput, LoginTabs};
 
 pub fn render_login_register(app: &mut App, f: &mut Frame) {
@@ -18,7 +18,7 @@ pub fn render_login_register(app: &mut App, f: &mut Frame) {
         .block(Block::default())
         .select(app.login_window.active_tab as usize)
         .style(Style::default())
-        .highlight_style(Style::default().bold().black().bg(DEFAULT_THEME.active));
+        .highlight_style(Style::default().bold().black().bg(THEME.active));
 
     match app.login_window.active_tab {
         LoginTabs::Login => {
@@ -50,12 +50,12 @@ fn render_login(app: &mut App, tabs: Tabs, f: &mut Frame) {
 
     let login_block = Block::default()
         .title_alignment(Alignment::Center)
-        .style(Style::default().fg(DEFAULT_THEME.fg).bg(DEFAULT_THEME.bg));
+        .style(Style::default().fg(THEME.fg).bg(THEME.bg));
 
     let username_input = Paragraph::new(app.login_window.username_input.as_str())
         .style(match app.login_window.active_input_field {
-            LoginActiveInput::Username => Style::default().fg(DEFAULT_THEME.active),
-            LoginActiveInput::Password => Style::default().fg(DEFAULT_THEME.inactive),
+            LoginActiveInput::Username => Style::default().fg(THEME.active),
+            LoginActiveInput::Password => Style::default().fg(THEME.inactive),
             _ => unreachable!(),
         })
         .block(
@@ -65,8 +65,8 @@ fn render_login(app: &mut App, tabs: Tabs, f: &mut Frame) {
         );
     let password_input = Paragraph::new(app.login_window.password_input.as_str())
         .style(match app.login_window.active_input_field {
-            LoginActiveInput::Username => Style::default().fg(DEFAULT_THEME.inactive),
-            LoginActiveInput::Password => Style::default().fg(DEFAULT_THEME.active),
+            LoginActiveInput::Username => Style::default().fg(THEME.inactive),
+            LoginActiveInput::Password => Style::default().fg(THEME.active),
             _ => unreachable!(),
         })
         .block(
@@ -75,7 +75,7 @@ fn render_login(app: &mut App, tabs: Tabs, f: &mut Frame) {
                 .title("Password")
         );
     let error_message = Paragraph::new(app.login_window.login_error_message.as_str())
-        .style(Style::default().fg(DEFAULT_THEME.error))
+        .style(Style::default().fg(THEME.error))
         .block(
             Block::default()
         )
@@ -122,12 +122,12 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
 
     let block = Block::default()
         .title_alignment(Alignment::Center)
-        .style(Style::default().fg(DEFAULT_THEME.fg).bg(DEFAULT_THEME.bg));
+        .style(Style::default().fg(THEME.fg).bg(THEME.bg));
 
     let username_input = Paragraph::new(app.login_window.register_username_input.as_str())
         .style(match app.login_window.active_input_field {
-            LoginActiveInput::RegisterUsername => Style::default().fg(DEFAULT_THEME.active),
-            _ => Style::default().fg(DEFAULT_THEME.inactive),
+            LoginActiveInput::RegisterUsername => Style::default().fg(THEME.active),
+            _ => Style::default().fg(THEME.inactive),
         })
         .block(
             Block::default()
@@ -136,8 +136,8 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
         );
     let password_input = Paragraph::new(app.login_window.register_password_input.as_str())
         .style(match app.login_window.active_input_field {
-            LoginActiveInput::RegisterPassword => Style::default().fg(DEFAULT_THEME.active),
-            _ => Style::default().fg(DEFAULT_THEME.inactive),
+            LoginActiveInput::RegisterPassword => Style::default().fg(THEME.active),
+            _ => Style::default().fg(THEME.inactive),
         })
         .block(
             Block::default()
@@ -146,8 +146,8 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
         );
     let password_confirmation_input = Paragraph::new(app.login_window.register_password_confirmation_input.as_str())
         .style(match app.login_window.active_input_field {
-            LoginActiveInput::RegisterPasswordConfirmation => Style::default().fg(DEFAULT_THEME.active),
-            _ => Style::default().fg(DEFAULT_THEME.inactive),
+            LoginActiveInput::RegisterPasswordConfirmation => Style::default().fg(THEME.active),
+            _ => Style::default().fg(THEME.inactive),
         })
         .block(
             Block::default()
@@ -155,7 +155,7 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
                 .title("Confirm password")
         );
     let error_message = Paragraph::new(app.login_window.register_error_message.as_str())
-        .style(Style::default().fg(DEFAULT_THEME.error))
+        .style(Style::default().fg(THEME.error))
         .block(
             Block::default()
         )

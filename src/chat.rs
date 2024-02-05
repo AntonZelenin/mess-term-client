@@ -5,10 +5,18 @@ pub struct Message {
     pub chat_id: u32,
     pub sender_id: String,
     pub text: String,
-    pub created_at: f32,
+    pub created_at: Option<f32>,
 }
 
 impl Message {
+    pub fn new(chat_id: u32, sender_id: String, text: String) -> Self {
+        Self {
+            chat_id,
+            sender_id,
+            text,
+            created_at: None,
+        }
+    }
     pub fn as_string(&self) -> String {
         self.text.clone()
     }

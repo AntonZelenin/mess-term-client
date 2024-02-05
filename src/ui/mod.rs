@@ -2,6 +2,7 @@ use ratatui::{
     prelude::Frame,
     style::Color,
 };
+use crate::constants;
 
 use crate::app::App;
 
@@ -20,8 +21,8 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
 fn get_main_color(app: &App) -> Color {
     if app.is_authenticated() {
-        Color::Yellow
+        constants::THEME.fg
     } else {
-        Color::DarkGray
+        constants::THEME.inactive
     }
 }

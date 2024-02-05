@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent};
-use crate::chat::{Chat, SearchUserResult};
+use crate::chat::{Chat, Message, SearchUserResult};
 use crate::helpers::list::StatefulList;
 use crate::ui::chat::StatefulChat;
 use crate::window::InputEntity;
@@ -21,14 +21,20 @@ pub struct MainWindow {
     chats: StatefulList<StatefulChat>,
     search_results: StatefulList<StatefulChat>,
     search_input: String,
-    enter_message_input: String,
+    message_input: String,
     active_input_entity: ActiveInputEntity,
     cursor_position: usize,
+    loaded_chat: Option<usize>,
+
+    user_id: String,
 }
 
 impl MainWindow {
-    pub fn new(chats: Vec<Chat>) -> Self {
-        let mut main_window = MainWindow::default();
+    pub fn new(chats: Vec<Chat>, user_id: String) -> Self {
+        let mut main_window = Self {
+            user_id,
+            ..Default::default()
+        };
         main_window.add_chats(chats);
         main_window
     }
@@ -42,14 +48,14 @@ impl MainWindow {
     pub fn get_active_input(&self) -> String {
         match self.active_input_entity {
             ActiveInputEntity::SearchChats => self.search_input.clone().to_string(),
-            ActiveInputEntity::EnterMessage => self.enter_message_input.clone().to_string(),
+            ActiveInputEntity::EnterMessage => self.message_input.clone().to_string(),
         }
     }
 
     pub fn get_active_input_mut(&mut self) -> &mut String {
         match self.active_input_entity {
             ActiveInputEntity::SearchChats => &mut self.search_input,
-            ActiveInputEntity::EnterMessage => &mut self.enter_message_input,
+            ActiveInputEntity::EnterMessage => &mut self.message_input,
         }
     }
 
@@ -69,6 +75,22 @@ impl MainWindow {
         self.search_input.clone()
     }
 
+    pub fn get_message(&self) -> String {
+        self.message_input.clone()
+    }
+
+    pub fn pop_message_input(&mut self) -> Message {
+        let message_string = self.message_input.clone();
+        let message = Message::new(
+            self.get_loaded_chat().id,
+            self.user_id.clone(),
+            message_string,
+        );
+
+        self.message_input.clear();
+        message
+    }
+
     pub fn get_chats(&self) -> &StatefulList<StatefulChat> {
         if self.search_results.is_empty() {
             &self.chats
@@ -83,6 +105,25 @@ impl MainWindow {
         } else {
             &mut self.search_results
         }
+    }
+
+    pub fn load_chat(&mut self) {
+        assert!(self.get_chats().state.selected().is_some());
+
+        self.loaded_chat = self.get_chats().state.selected();
+    }
+
+    pub fn has_loaded_chat(&self) -> bool {
+        self.loaded_chat.is_some()
+    }
+
+    pub fn get_loaded_chat(&self) -> &StatefulChat {
+        self.loaded_chat.map(|index| &self.get_chats().items[index]).unwrap()
+    }
+
+    pub fn set_active_input_entity(&mut self, active_input_entity: ActiveInputEntity) {
+        self.active_input_entity = active_input_entity;
+        self.reset_cursor();
     }
 
     fn move_chat_cursor_up(&mut self) {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crossterm::event::KeyEvent;
-use crate::{api, auth, window};
-use crate::chat::Chat;
+use crate::{api, window};
+use crate::chat::{Chat, Message};
 use crate::contact::Contact;
 use crate::window::InputEntity;
 use crate::window::login::{LoginTabs, LoginWindow};
@@ -78,11 +78,18 @@ impl App {
             Windows::Main => {
                 match self.main_window.get_active_input_entity() {
                     window::main::ActiveInputEntity::SearchChats => {
-                        self.main_window.set_search_results(
-                            self.api_client.search_users(self.main_window.get_active_input()).unwrap()
-                        );
+                        if self.main_window.get_chats().state.selected().is_some() {
+                            self.main_window.load_chat();
+                            self.main_window.set_active_input_entity(window::main::ActiveInputEntity::EnterMessage);
+                        } else {
+                            self.main_window.set_search_results(
+                                self.api_client.search_users(self.main_window.get_active_input()).unwrap()
+                            );
+                        }
                     }
-                    window::main::ActiveInputEntity::EnterMessage => {}
+                    window::main::ActiveInputEntity::EnterMessage => {
+                        self.send_message(self.main_window.pop_message_input());
+                    }
                 }
             }
         }
@@ -156,6 +163,10 @@ impl App {
 
     pub fn load_contacts(api_client: &mut api::Client) -> HashMap<String, Contact> {
         api_client.get_contacts().unwrap()
+    }
+
+    fn send_message(&self, message: Message) {
+        self.api_client.send_message(&message);
     }
 }
 

@@ -1,3 +1,4 @@
+use websocket::sync::Client as SyncClient;
 use std::collections::HashMap;
 use serde::Serialize;
 use crate::auth;
@@ -14,6 +15,7 @@ pub struct Client {
     client: reqwest::blocking::Client,
     auth_tokens: Option<AuthTokens>,
     auth_tokens_store_callback: Box<dyn Fn(&AuthTokens)>,
+    message_ws: Option<SyncClient<std::net::TcpStream>>,
 }
 
 #[derive(Serialize)]
@@ -33,6 +35,7 @@ impl Client {
             client: reqwest::blocking::Client::new(),
             auth_tokens,
             auth_tokens_store_callback: Box::new(auth::store_auth_tokens),
+            message_ws: None,
         }
     }
 
