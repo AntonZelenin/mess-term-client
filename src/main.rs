@@ -15,8 +15,9 @@ mod ui;
 mod window;
 mod contact;
 
-fn main() -> Result<()> {
-    let mut app = App::new(api::Client::new(auth::load_auth_tokens()));
+#[tokio::main]
+async fn main() -> Result<()> {
+    let mut app = App::new(api::Client::new(auth::load_auth_tokens()).await);
     let mut tui = tui::build_tui();
 
     tui.enter()?;
@@ -32,6 +33,8 @@ fn main() -> Result<()> {
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
         };
+
+        app.receive_message().await;
     }
 
     tui.exit()?;

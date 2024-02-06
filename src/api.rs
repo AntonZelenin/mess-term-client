@@ -1,6 +1,12 @@
-use websocket::sync::Client as SyncClient;
 use std::collections::HashMap;
+use futures::{SinkExt, StreamExt};
+use futures::stream::{SplitSink, SplitStream};
 use serde::Serialize;
+use serde_json::from_str;
+use tokio::net::TcpStream;
+use tokio_tungstenite::tungstenite::protocol::Message;
+use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use url::Url;
 use crate::auth;
 use crate::chat::{Chat, SearchUserResult};
 use crate::contact::Contact;
@@ -10,13 +16,7 @@ use crate::auth::AuthTokens;
 pub const AUTH_SERVICE_API_URL: &str = "localhost:55800/api/auth/v1";
 pub const USER_SERVICE_API_URL: &str = "localhost:55800/api/user/v1";
 pub const MESSAGE_SERVICE_API_URL: &str = "localhost:55800/api/message/v1";
-
-pub struct Client {
-    client: reqwest::blocking::Client,
-    auth_tokens: Option<AuthTokens>,
-    auth_tokens_store_callback: Box<dyn Fn(&AuthTokens)>,
-    message_ws: Option<SyncClient<std::net::TcpStream>>,
-}
+pub const WEBSOCKET_URL: &str = "ws://echo.websocket.org";
 
 #[derive(Serialize)]
 struct RegisterData {
@@ -29,13 +29,29 @@ struct RefreshTokenData {
     refresh_token: String,
 }
 
+pub struct Client {
+    client: reqwest::blocking::Client,
+    auth_tokens: Option<AuthTokens>,
+    auth_tokens_store_callback: Box<dyn Fn(&AuthTokens)>,
+    write_ws: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+    read_ws: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+}
+
 impl Client {
-    pub fn new(auth_tokens: Option<AuthTokens>) -> Self {
+    pub async fn new(auth_tokens: Option<AuthTokens>) -> Self {
+        let url = Url::parse(WEBSOCKET_URL).expect("Failed to parse WebSocket URL");
+        let (ws_stream, _) = connect_async(url)
+            .await
+            .expect("Failed to connect to WebSocket");
+
+        let (write_ws, read_ws) = ws_stream.split();
+
         Self {
             client: reqwest::blocking::Client::new(),
             auth_tokens,
             auth_tokens_store_callback: Box::new(auth::store_auth_tokens),
-            message_ws: None,
+            write_ws,
+            read_ws,
         }
     }
 
@@ -251,5 +267,39 @@ impl Client {
 
     fn get_authorization_header(&mut self) -> String {
         format!("Bearer {}", self.auth_tokens.as_ref().expect("Unauthenticated").token)
+    }
+
+    pub async fn send_message(&mut self, message: crate::chat::Message) {
+        let send_message = self.
+            write_ws.
+            send(Message::Text(serde_json::to_string(&message).unwrap()));
+        let _ = send_message
+            .await
+            .expect("Failed to send message");
+    }
+
+    pub async fn receive_message(&mut self) -> Option<crate::chat::Message> {
+        if let Some(message) = self.read_ws.next().await {
+            match message {
+                Ok(Message::Text(text)) => {
+                    match from_str::<crate::chat::Message>(&text) {
+                        Ok(parsed_message) => {
+                            return Some(parsed_message);
+                        }
+                        Err(e) => {
+                            panic!("Failed to parse message: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    panic!("Failed to receive message: {}", e);
+                }
+                _ => {
+                    panic!("Received non-text message");
+                }
+            }
+        };
+        
+        None
     }
 }

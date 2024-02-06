@@ -95,6 +95,12 @@ impl App {
         }
     }
 
+    pub async fn receive_message(&mut self) {
+        if let Some(message) = self.api_client.receive_message().await {
+            self.main_window.add_message(message);
+        }
+    }
+
     fn process_login(&mut self) {
         self.login_window.login_error_message = String::new();
         let res = self.login_window.get_input_values();
@@ -165,8 +171,8 @@ impl App {
         api_client.get_contacts().unwrap()
     }
 
-    fn send_message(&self, message: Message) {
-        self.api_client.send_message(&message);
+    async fn send_message(&mut self, message: Message) {
+        self.api_client.send_message(message).await;
     }
 }
 

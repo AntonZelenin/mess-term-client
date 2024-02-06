@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use crate::chat::{Chat, Message, SearchUserResult};
-use crate::helpers::list::StatefulList;
+use crate::helpers::hash_map::StatefulHashMap;
 use crate::ui::chat::StatefulChat;
 use crate::window::InputEntity;
 
@@ -18,13 +18,13 @@ impl Default for ActiveInputEntity {
 
 #[derive(Default)]
 pub struct MainWindow {
-    chats: StatefulList<StatefulChat>,
-    search_results: StatefulList<StatefulChat>,
+    chats: StatefulHashMap<u32, StatefulChat>,
+    search_results: StatefulHashMap<u32, StatefulChat>,
     search_input: String,
     message_input: String,
     active_input_entity: ActiveInputEntity,
     cursor_position: usize,
-    loaded_chat: Option<usize>,
+    loaded_chat_id: Option<u32>,
 
     user_id: String,
 }
@@ -41,7 +41,7 @@ impl MainWindow {
 
     pub fn add_chats(&mut self, chats: Vec<Chat>) {
         for chat in chats {
-            self.chats.items.push(StatefulChat::from_chat(chat));
+            self.chats.items.insert(chat.id.expect("Chat doesn't have id"), StatefulChat::from_chat(chat));
         }
     }
 
@@ -67,7 +67,7 @@ impl MainWindow {
         self.search_results.items.clear();
         for user in search_results.users {
             let chat = Chat { id: None, name: Some(user.username), member_ids: vec![user.user_id], messages: vec![] };
-            self.search_results.items.push(StatefulChat::from_chat(chat));
+            self.search_results.items.insert(chat.id.expect("Search results chats don't have id"), StatefulChat::from_chat(chat));
         }
     }
 
@@ -91,7 +91,7 @@ impl MainWindow {
         message
     }
 
-    pub fn get_chats(&self) -> &StatefulList<StatefulChat> {
+    pub fn get_chats(&self) -> &StatefulHashMap<u32, StatefulChat> {
         if self.search_results.is_empty() {
             &self.chats
         } else {
@@ -99,7 +99,7 @@ impl MainWindow {
         }
     }
 
-    pub fn get_chats_mut(&mut self) -> &mut StatefulList<StatefulChat> {
+    pub fn get_chats_mut(&mut self) -> &mut StatefulHashMap<u32, StatefulChat> {
         if self.search_results.is_empty() {
             &mut self.chats
         } else {
@@ -110,15 +110,15 @@ impl MainWindow {
     pub fn load_chat(&mut self) {
         assert!(self.get_chats().state.selected().is_some());
 
-        self.loaded_chat = self.get_chats().state.selected();
+        self.loaded_chat_id = Some(self.get_chats().state.selected().unwrap() as u32);
     }
 
     pub fn has_loaded_chat(&self) -> bool {
-        self.loaded_chat.is_some()
+        self.loaded_chat_id.is_some()
     }
 
     pub fn get_loaded_chat(&self) -> &StatefulChat {
-        self.loaded_chat.map(|index| &self.get_chats().items[index]).unwrap()
+        self.loaded_chat_id.map(|index| &self.get_chats().items.get(&index).unwrap()).unwrap()
     }
 
     pub fn set_active_input_entity(&mut self, active_input_entity: ActiveInputEntity) {
