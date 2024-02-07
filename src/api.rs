@@ -2,14 +2,17 @@ use futures::{SinkExt, StreamExt};
 use futures::stream::{SplitSink, SplitStream};
 use serde::Serialize;
 use tokio::net::TcpStream;
+use tokio_tungstenite::tungstenite::http::header::AUTHORIZATION;
+use tokio_tungstenite::tungstenite::http::Request;
 use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use url::Url;
-use crate::auth;
+use crate::{auth, helpers};
 use crate::chat::{ChatModel, NewChatModel, SearchResults};
 use crate::auth::AuthTokens;
 use crate::chat::message::NewMessage;
 
+pub const HOST: &str = "localhost:55800";
 // todo https
 pub const AUTH_SERVICE_API_URL: &str = "localhost:55800/api/auth/v1";
 pub const USER_SERVICE_API_URL: &str = "localhost:55800/api/user/v1";
@@ -319,8 +322,18 @@ impl Client {
 
     async fn connect_to_message_ws(&mut self) {
         // todo it cannot handle refresh token and unauthenticated requests
-        let url = Url::parse(MESSAGE_WEBSOCKET_URL).expect("Failed to parse WebSocket URL");
-        let (ws_stream, _) = connect_async(url)
+        let request = Request::builder()
+            .uri(MESSAGE_WEBSOCKET_URL)
+            .header(AUTHORIZATION, self.get_authorization_header())
+            .header("sec-websocket-key", helpers::generate_sec_websocket_key())
+            .header("host", HOST)
+            .header("upgrade", "websocket")
+            .header("connection", "upgrade")
+            .header("sec-websocket-version", 13)
+            .body(())
+            .expect("Failed to build request.");
+
+        let (ws_stream, _) = connect_async(request)
             .await
             .expect("Failed to connect to WebSocket");
 
