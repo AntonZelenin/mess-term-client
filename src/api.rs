@@ -134,6 +134,8 @@ impl Client {
 
         self.set_auth_tokens(AuthTokens::new(&jwt, &refresh_token));
 
+        self.connect_to_message_ws().await;
+
         Ok(())
     }
 

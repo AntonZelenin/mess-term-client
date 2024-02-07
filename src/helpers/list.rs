@@ -96,6 +96,7 @@ impl<T> StatefulOrderedList<T>
     fn update_state(&mut self) {
         if self.selected_item_id.is_none() {
             self.state.select(None);
+            return;
         }
 
         let selected_item_index = self
