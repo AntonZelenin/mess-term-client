@@ -76,7 +76,7 @@ impl App {
                         self.process_login().await;
                     }
                     LoginTabs::Register => {
-                        self.process_register();
+                        self.process_register().await;
                     }
                 }
             }

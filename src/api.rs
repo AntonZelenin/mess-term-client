@@ -207,7 +207,7 @@ impl Client {
     }
 
     pub async fn receive_message(&mut self) -> Option<crate::chat::message::Message> {
-        if let Some(message) = self.read_ws.as_mut().expect("Unauthenticaed").next().await {
+        if let Some(message) = self.read_ws.as_mut().expect("Unauthenticated").next().await {
             match message {
                 Ok(Message::Text(text)) => {
                     match serde_json::from_str::<crate::chat::message::Message>(&text) {
