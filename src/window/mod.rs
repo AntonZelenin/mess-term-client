@@ -18,20 +18,14 @@ pub trait InputEntity {
     fn switch_tabs(&mut self);
 }
 
-pub fn process(app: &mut App, key_event: KeyEvent) {
+pub async fn process(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
         KeyCode::Char('c') | KeyCode::Char('C') => {
             if key_event.modifiers == KeyModifiers::CONTROL {
                 app.quit()
             }
         }
-        // KeyCode::Down | KeyCode::Char('j') => app.chats.next(),
-        // KeyCode::Up | KeyCode::Char('k') => app.chats.previous(),
-        // KeyCode::Left | KeyCode::Char('h') => app.chats.unselect(),
-        KeyCode::Enter => app.submit(),
-        // KeyCode::Esc => {
-        //     app.switch_to_previous_input();
-        // }
+        KeyCode::Enter => app.submit().await,
         _ => {
             app.pass_input_to_active_entity(key_event);
         }

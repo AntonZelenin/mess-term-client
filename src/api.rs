@@ -1,16 +1,14 @@
-use std::collections::HashMap;
 use futures::{SinkExt, StreamExt};
 use futures::stream::{SplitSink, SplitStream};
 use serde::Serialize;
-use serde_json::from_str;
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use url::Url;
 use crate::auth;
-use crate::chat::{Chat, SearchUserResult};
-use crate::contact::Contact;
+use crate::chat::{ChatModel, NewChatModel, SearchResults};
 use crate::auth::AuthTokens;
+use crate::chat::message::NewMessage;
 
 // todo https
 pub const AUTH_SERVICE_API_URL: &str = "localhost:55800/api/auth/v1";
@@ -139,12 +137,12 @@ impl Client {
         self.auth_tokens.is_some()
     }
 
-    pub fn get_chats(&mut self) -> Result<Vec<Chat>, String> {
+    pub fn get_chats(&mut self) -> Result<Vec<ChatModel>, String> {
         match self.get(&format!("http://{}/chats", MESSAGE_SERVICE_API_URL), vec![]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
-                let chats: Vec<Chat> = serde_json::from_str(&data.to_string()).unwrap();
+                let chats: Vec<ChatModel> = serde_json::from_str(&data.to_string()).unwrap();
                 Ok(chats)
             }
             Err(e) => {
@@ -153,14 +151,14 @@ impl Client {
             }
         }
     }
-
-    pub fn get_contacts(&mut self) -> Result<HashMap<String, Contact>, String> {
-        match self.get(&format!("http://{}/contacts", USER_SERVICE_API_URL), vec![]) {
+    pub fn search_chats_and_users(&mut self, username: String) -> Result<SearchResults, String> {
+        match self.get(&format!("http://{}/users", USER_SERVICE_API_URL), vec![("username".parse().unwrap(), username)]) {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .map_err(|e| e.to_string())?;
-                let contacts = serde_json::from_str(&data["contacts"].to_string()).unwrap();
-                Ok(contacts)
+                // todo all these things must be done using derive serialize
+                let users: SearchResults = serde_json::from_str(&data.to_string()).unwrap();
+                Ok(users)
             }
             Err(e) => {
                 // todo logger.error(e);
@@ -169,20 +167,58 @@ impl Client {
         }
     }
 
-    pub fn search_users(&mut self, username: String) -> Result<SearchUserResult, String> {
-        match self.get(&format!("http://{}/users", USER_SERVICE_API_URL), vec![("username".parse().unwrap(), username)]) {
-            Ok(res) => {
-                let data = res.json::<serde_json::Value>()
-                    .map_err(|e| e.to_string())?;
-                // todo all these things must be done using derive serialize
-                let users: SearchUserResult = serde_json::from_str(&data.to_string()).unwrap();
-                Ok(users)
-            }
-            Err(e) => {
-                // todo logger.error(e);
-                Err(e)
-            }
+    pub async fn send_message(&mut self, message: NewMessage) {
+        let send_message = self.
+            write_ws.
+            send(Message::Text(serde_json::to_string(&message).unwrap()));
+        let _ = send_message
+            .await
+            .expect("Failed to send message");
+    }
+
+    pub async fn create_chat(&mut self, chat: NewChatModel) -> Result<ChatModel, String> {
+        let res = self
+            .client
+            .post(&format!("http://{}/chats", MESSAGE_SERVICE_API_URL))
+            .header("Authorization", self.get_authorization_header())
+            .json(&chat)
+            .send()
+            .map_err(|e| e.to_string())?;
+
+        let status = res.status();
+        let data = res.json::<serde_json::Value>()
+            .map_err(|e| e.to_string())
+            .expect("Failed to parse response");
+        if !status.is_success() {
+            return Err(data["detail"].to_string());
         }
+
+        serde_json::from_str(&data.to_string()).unwrap()
+    }
+
+    pub async fn receive_message(&mut self) -> Option<crate::chat::message::Message> {
+        if let Some(message) = self.read_ws.next().await {
+            match message {
+                Ok(Message::Text(text)) => {
+                    match serde_json::from_str::<crate::chat::message::Message>(&text) {
+                        Ok(parsed_message) => {
+                            return Some(parsed_message);
+                        }
+                        Err(e) => {
+                            panic!("Failed to parse message: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    panic!("Failed to receive message: {}", e);
+                }
+                _ => {
+                    panic!("Received non-text message");
+                }
+            }
+        };
+
+        None
     }
 
     fn post(&mut self, base_url: &str, query_params: Vec<(String, String)>) -> Result<reqwest::blocking::Response, String> {
@@ -207,7 +243,7 @@ impl Client {
     }
 
     fn get(&mut self, base_url: &str, query_params: Vec<(String, String)>) -> Result<reqwest::blocking::Response, String> {
-        let url = reqwest::Url::parse_with_params(base_url, query_params.clone()).map_err(|e| e.to_string())?;
+        let url = Url::parse_with_params(base_url, query_params.clone()).map_err(|e| e.to_string())?;
         let res = self.
             client
             .get(url)
@@ -267,39 +303,5 @@ impl Client {
 
     fn get_authorization_header(&mut self) -> String {
         format!("Bearer {}", self.auth_tokens.as_ref().expect("Unauthenticated").token)
-    }
-
-    pub async fn send_message(&mut self, message: crate::chat::Message) {
-        let send_message = self.
-            write_ws.
-            send(Message::Text(serde_json::to_string(&message).unwrap()));
-        let _ = send_message
-            .await
-            .expect("Failed to send message");
-    }
-
-    pub async fn receive_message(&mut self) -> Option<crate::chat::Message> {
-        if let Some(message) = self.read_ws.next().await {
-            match message {
-                Ok(Message::Text(text)) => {
-                    match from_str::<crate::chat::Message>(&text) {
-                        Ok(parsed_message) => {
-                            return Some(parsed_message);
-                        }
-                        Err(e) => {
-                            panic!("Failed to parse message: {}", e);
-                        }
-                    }
-                }
-                Err(e) => {
-                    panic!("Failed to receive message: {}", e);
-                }
-                _ => {
-                    panic!("Received non-text message");
-                }
-            }
-        };
-        
-        None
     }
 }

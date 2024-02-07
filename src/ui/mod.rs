@@ -6,7 +6,6 @@ use crate::constants;
 
 use crate::app::App;
 
-pub mod chat;
 mod login;
 mod main;
 pub mod tui;

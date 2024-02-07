@@ -3,9 +3,10 @@ use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::prelude::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, BorderType, List, ListDirection, ListItem, Paragraph};
 use crate::app::App;
+use crate::chat::Chat;
+use crate::chat::message::Message;
 use crate::constants::THEME;
 use crate::ui;
-use crate::ui::chat::StatefulChat;
 
 pub fn render_main(app: &mut App, f: &mut Frame) {
     let (main_area, footer_area) = create_main_and_footer(f);
@@ -28,7 +29,7 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
         );
 
     let main_color = ui::get_main_color(app);
-    let chats = app.main_window.get_chats_mut();
+    let chats = app.main_window.chat_manager.get_chats_mut();
     f.render_widget(search_input, search_area);
     f.render_stateful_widget(
         build_chats(
@@ -43,26 +44,26 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
 fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
     let (message_list_area, message_input_area) = create_message_area(messages_area);
 
-    if !app.main_window.has_loaded_chat() {
-        f.render_widget(
-            get_chat_hints(THEME.active),
-            messages_area,
-        );
-    } else {
+    if let Some(selected_chat) = app.main_window.chat_manager.get_selected_chat() {
         let message_input = app.main_window.get_message();
-        let message_input = Paragraph::new(message_input.as_str())
+        let message_paragraph = Paragraph::new(message_input.as_str())
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_type(BorderType::Plain)
-                   .style(Style::default().fg(THEME.active))
+                    .style(Style::default().fg(THEME.active))
             );
 
         f.render_widget(
-            build_messages(app.main_window.get_loaded_chat(), THEME.fg),
+            build_messages(app.main_window.chat_manager.get_messages(selected_chat.id.unwrap()), THEME.fg),
             message_list_area,
         );
-        f.render_widget(message_input, message_input_area);
+        f.render_widget(message_paragraph, message_input_area);
+    } else {
+        f.render_widget(
+            get_chat_hints(THEME.active),
+            messages_area,
+        );
     }
 }
 
@@ -120,7 +121,7 @@ fn create_main_and_footer(f: &mut Frame) -> (Rect, Rect) {
     (terminal_layout[0], terminal_layout[1])
 }
 
-fn build_chats(chats: &[StatefulChat], fg_color: Color) -> List {
+fn build_chats(chats: &[Chat], fg_color: Color) -> List {
     let items: Vec<ListItem> = chats
         .iter()
         // .flat_map(|s| vec![ListItem::new(*s), ListItem::new("")])
@@ -155,13 +156,10 @@ fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
         .alignment(Alignment::Center)
 }
 
-fn build_messages(chat: &StatefulChat, fg_color: Color) -> List {
-    let messages = chat.messages.clone();
-
+fn build_messages(messages: &Vec<Message>, fg_color: Color) -> List {
     let items: Vec<ListItem> = messages
-        .items
         .iter()
-        .map(|s| ListItem::new(s.as_string()))
+        .map(|s| ListItem::new(s.text.clone()))
         .collect();
 
     List::new(items)

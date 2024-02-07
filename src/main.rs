@@ -5,15 +5,14 @@ use crate::ui::tui;
 use crate::window::process;
 
 mod api;
+mod auth;
 mod app;
 mod chat;
 mod constants;
 mod event;
 mod helpers;
-mod auth;
 mod ui;
 mod window;
-mod contact;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -29,7 +28,7 @@ async fn main() -> Result<()> {
             Event::Tick => {
                 app.tick();
             }
-            Event::Key(key_event) => process(&mut app, key_event),
+            Event::Key(key_event) => process(&mut app, key_event).await,
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
         };
