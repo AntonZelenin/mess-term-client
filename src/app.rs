@@ -123,6 +123,7 @@ impl App {
                         } else {
                             let new_chat = NewChatModel {
                                 name: chat.name.clone(),
+                                creator_username: self.username.clone(),
                                 member_usernames: chat.member_usernames.clone(),
                                 first_message: message_str,
                             };

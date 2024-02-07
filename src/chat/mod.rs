@@ -18,6 +18,7 @@ pub struct ChatModel {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NewChatModel {
     pub name: String,
+    pub creator_username: String,
     pub member_usernames: Vec<String>,
     pub first_message: String,
 }
