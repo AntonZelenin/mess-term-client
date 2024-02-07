@@ -16,7 +16,7 @@ mod window;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut app = App::new(api::Client::new(auth::load_auth_tokens()).await);
+    let mut app = App::new(api::Client::new(auth::load_auth_tokens()).await).await;
     let mut tui = tui::build_tui();
 
     tui.enter()?;

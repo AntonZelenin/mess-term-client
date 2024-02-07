@@ -20,14 +20,14 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(
+    pub async fn new(
         mut api_client: api::Client,
     ) -> Self {
         let mut chat_manager = ChatManager::new();
 
         if api_client.is_authenticated() {
             // contacts = Self::load_contacts(&mut api_client);
-            let (chats, messages) = Self::load_chats_and_messages(&mut api_client);
+            let (chats, messages) = Self::load_chats_and_messages(&mut api_client).await;
             chat_manager.add_chats(chats);
             chat_manager.add_messages(messages);
         }
@@ -73,7 +73,7 @@ impl App {
             Windows::Login => {
                 match self.login_window.active_tab {
                     LoginTabs::Login => {
-                        self.process_login();
+                        self.process_login().await;
                     }
                     LoginTabs::Register => {
                         self.process_register();
@@ -87,7 +87,7 @@ impl App {
                             self.loaded_internal_chat_id = Some(chat.internal_id.clone());
                             self.main_window.set_active_input_entity(window::main::ActiveInputEntity::EnterMessage);
                         } else {
-                            let search_results = self.api_client.search_chats_and_users(self.main_window.get_active_input()).unwrap();
+                            let search_results = self.api_client.search_chats_and_users(self.main_window.get_active_input()).await.unwrap();
 
                             let mut chats = search_results
                                 .chats
@@ -136,18 +136,22 @@ impl App {
     }
 
     pub async fn receive_message(&mut self) {
+        if !self.api_client.is_authenticated() {
+            return;
+        }
+
         if let Some(message) = self.api_client.receive_message().await {
             self.main_window.chat_manager.add_message(message);
         }
     }
 
-    fn process_login(&mut self) {
+    async fn process_login(&mut self) {
         self.login_window.login_error_message = String::new();
         let res = self.login_window.get_input_values();
 
-        match self.api_client.login(&res["username"], &res["password"]) {
+        match self.api_client.login(&res["username"], &res["password"]).await {
             Ok(_) => {
-                let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client);
+                let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client).await;
                 self.main_window.chat_manager.add_chats(chats);
                 self.main_window.chat_manager.add_messages(messages);
 
@@ -159,7 +163,7 @@ impl App {
         }
     }
 
-    fn process_register(&mut self) {
+    async fn process_register(&mut self) {
         self.login_window.login_error_message = String::new();
         let res = self.login_window.get_input_values();
 
@@ -169,9 +173,9 @@ impl App {
             return;
         }
 
-        match self.api_client.register(&res["username"], &res["password"]) {
+        match self.api_client.register(&res["username"], &res["password"]).await {
             Ok(_) => {
-                let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client);
+                let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client).await;
                 self.main_window.chat_manager.add_chats(chats);
                 self.main_window.chat_manager.add_messages(messages);
 
@@ -215,8 +219,8 @@ impl App {
         self.main_window.chat_manager.add_chat(chat);
     }
 
-    fn load_chats_and_messages(api_client: &mut api::Client) -> (Vec<Chat>, HashMap<ChatId, Vec<Message>>) {
-        let chat_models = api_client.get_chats().unwrap();
+    async fn load_chats_and_messages(api_client: &mut api::Client) -> (Vec<Chat>, HashMap<ChatId, Vec<Message>>) {
+        let chat_models = api_client.get_chats().await.unwrap();
 
         let mut messages = HashMap::new();
         for chat in chat_models.iter() {
