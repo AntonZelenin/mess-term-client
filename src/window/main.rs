@@ -1,11 +1,9 @@
 use crossterm::event::{KeyCode, KeyEvent};
-use crate::chat::{Chat, Message, SearchUserResult};
-use crate::helpers::list::StatefulList;
-use crate::ui::chat::StatefulChat;
+use crate::chat::manager::ChatManager;
 use crate::window::InputEntity;
 
 #[derive(Debug, Clone, Copy)]
-pub enum  ActiveInputEntity {
+pub enum ActiveInputEntity {
     SearchChats,
     EnterMessage,
 }
@@ -18,33 +16,14 @@ impl Default for ActiveInputEntity {
 
 #[derive(Default)]
 pub struct MainWindow {
-    chats: StatefulList<StatefulChat>,
-    search_results: StatefulList<StatefulChat>,
+    pub chat_manager: ChatManager,
     search_input: String,
     message_input: String,
     active_input_entity: ActiveInputEntity,
     cursor_position: usize,
-    loaded_chat: Option<usize>,
-
-    user_id: String,
 }
 
 impl MainWindow {
-    pub fn new(chats: Vec<Chat>, user_id: String) -> Self {
-        let mut main_window = Self {
-            user_id,
-            ..Default::default()
-        };
-        main_window.add_chats(chats);
-        main_window
-    }
-
-    pub fn add_chats(&mut self, chats: Vec<Chat>) {
-        for chat in chats {
-            self.chats.items.push(StatefulChat::from_chat(chat));
-        }
-    }
-
     pub fn get_active_input(&self) -> String {
         match self.active_input_entity {
             ActiveInputEntity::SearchChats => self.search_input.clone().to_string(),
@@ -63,14 +42,6 @@ impl MainWindow {
         self.active_input_entity.clone()
     }
 
-    pub fn set_search_results(&mut self, search_results: SearchUserResult) {
-        self.search_results.items.clear();
-        for user in search_results.users {
-            let chat = Chat { id: None, name: Some(user.username), member_ids: vec![user.user_id], messages: vec![] };
-            self.search_results.items.push(StatefulChat::from_chat(chat));
-        }
-    }
-
     pub fn get_search_input(&self) -> String {
         self.search_input.clone()
     }
@@ -79,46 +50,10 @@ impl MainWindow {
         self.message_input.clone()
     }
 
-    pub fn pop_message_input(&mut self) -> Message {
-        let message_string = self.message_input.clone();
-        let message = Message::new(
-            self.get_loaded_chat().id,
-            self.user_id.clone(),
-            message_string,
-        );
-
+    pub fn pop_message_input(&mut self) -> String {
+        let message = self.message_input.clone();
         self.message_input.clear();
         message
-    }
-
-    pub fn get_chats(&self) -> &StatefulList<StatefulChat> {
-        if self.search_results.is_empty() {
-            &self.chats
-        } else {
-            &self.search_results
-        }
-    }
-
-    pub fn get_chats_mut(&mut self) -> &mut StatefulList<StatefulChat> {
-        if self.search_results.is_empty() {
-            &mut self.chats
-        } else {
-            &mut self.search_results
-        }
-    }
-
-    pub fn load_chat(&mut self) {
-        assert!(self.get_chats().state.selected().is_some());
-
-        self.loaded_chat = self.get_chats().state.selected();
-    }
-
-    pub fn has_loaded_chat(&self) -> bool {
-        self.loaded_chat.is_some()
-    }
-
-    pub fn get_loaded_chat(&self) -> &StatefulChat {
-        self.loaded_chat.map(|index| &self.get_chats().items[index]).unwrap()
     }
 
     pub fn set_active_input_entity(&mut self, active_input_entity: ActiveInputEntity) {
@@ -127,17 +62,11 @@ impl MainWindow {
     }
 
     fn move_chat_cursor_up(&mut self) {
-        self.get_chats_mut().previous();
+        self.chat_manager.select_previous_chat();
     }
 
     fn move_chat_cursor_down(&mut self) {
-        self.get_chats_mut().next();
-    }
-
-    fn reset_search(&mut self) {
-        self.search_results.items.clear();
-        self.search_input.clear();
-        self.reset_cursor();
+        self.chat_manager.select_next_chat();
     }
 }
 
@@ -163,7 +92,8 @@ impl InputEntity for MainWindow {
                 self.move_chat_cursor_down();
             }
             KeyCode::Esc => {
-                self.reset_search();
+                self.chat_manager.clear_search_results();
+                self.search_input.clear();
             }
             // KeyCode::Tab => {
             //     self.switch_to_next_input();

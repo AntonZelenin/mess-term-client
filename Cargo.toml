@@ -7,10 +7,15 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
-crossterm = "0.27"
+crossterm = { version = "0.27", features = ["event-stream"] }
+dirs = "5.0"
+futures = "0.3"
 ratatui = { version = "0.25", features = ["all-widgets"] }
 reqwest = { version = "0.11", features = ["blocking", "json"] }
-serde_json = "1.0"
-dirs = "5.0"
 serde = { version = "1.0.195", features = ["derive"] }
-websocket = "0.27"
+serde_json = "1.0"
+tokio = { version = "1.36", features = ["full"] }
+tokio-tungstenite = "0.21.0"
+url = "2.5.0"
+rand = "0.8"
+base64 = "0.21"
