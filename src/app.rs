@@ -156,6 +156,11 @@ impl App {
         self.login_window.login_error_message = String::new();
         let res = self.login_window.get_input_values();
 
+        if res["username"].is_empty() || res["password"].is_empty() {
+            self.login_window.login_error_message = "Username and password are required.".to_string();
+            return;
+        }
+
         match self.api_client.login(&res["username"], &res["password"]).await {
             Ok(_) => {
                 let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client).await;
@@ -174,8 +179,7 @@ impl App {
         self.login_window.login_error_message = String::new();
         let res = self.login_window.get_input_values();
 
-        let error = self.validate_register_input(&res);
-        if !error.is_empty() {
+        if let Some(error) = self.validate_register_input(&res) {
             self.login_window.register_error_message = error;
             return;
         }
@@ -194,26 +198,26 @@ impl App {
         }
     }
 
-    fn validate_register_input(&self, input_values: &HashMap<String, String>) -> String {
+    fn validate_register_input(&self, input_values: &HashMap<String, String>) -> Option<String> {
         // todo returning only one error message is temporary
         let mut error_message = String::new();
 
         if input_values["password"] != input_values["password_confirmation"] {
             error_message.push_str("Passwords do not match.\n");
-            return error_message;
+            return Some(error_message);
         }
 
         if input_values["password"].len() < 8 {
             error_message.push_str("Password must be at least 8 characters long.\n");
-            return error_message;
+            return Some(error_message);
         }
 
         if input_values["username"].len() < 3 {
             error_message.push_str("Username must be at least 3 characters long.\n");
-            return error_message;
+            return Some(error_message);
         }
 
-        error_message
+        None
     }
 
     async fn send_message(&mut self, message: NewMessage) {
