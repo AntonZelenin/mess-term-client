@@ -2,9 +2,9 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::prelude::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, BorderType, List, ListDirection, ListItem, Paragraph};
+use crate::schemas::Message;
 use crate::app::App;
 use crate::chat::Chat;
-use crate::chat::message::Message;
 use crate::constants::THEME;
 use crate::ui;
 

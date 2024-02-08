@@ -13,6 +13,7 @@ mod event;
 mod helpers;
 mod ui;
 mod window;
+pub mod schemas;
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -1,6 +1,17 @@
 use serde::{Deserialize, Serialize};
 use crate::helpers::types::ChatId;
 
+#[derive(Serialize)]
+pub struct RegisterData {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Serialize)]
+pub struct RefreshTokenData {
+    pub refresh_token: String,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NewMessage {
     pub chat_id: ChatId,

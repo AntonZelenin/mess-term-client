@@ -1,9 +1,8 @@
 pub mod manager;
-pub mod message;
 
 use std::cmp::Ordering;
 use serde::{Deserialize, Serialize};
-use crate::chat::message::Message;
+use crate::schemas::Message;
 use crate::helpers::types::ChatId;
 use crate::helpers::traits::InternalID;
 

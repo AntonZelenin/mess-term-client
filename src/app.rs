@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use crossterm::event::KeyEvent;
 use crate::{api, window};
+use crate::schemas::{Message, NewMessage};
 use crate::chat::{Chat, NewChatModel};
 use crate::chat::manager::ChatManager;
-use crate::chat::message::{Message, NewMessage};
 use crate::helpers::types::ChatId;
 use crate::window::InputEntity;
 use crate::window::login::{LoginTabs, LoginWindow};
