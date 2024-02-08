@@ -1,6 +1,6 @@
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::prelude::{Color, Modifier, Style};
+use ratatui::prelude::{Color, Line, Modifier, Span, Style, Stylize};
 use ratatui::widgets::{Block, Borders, BorderType, List, ListDirection, ListItem, Paragraph};
 use crate::schemas::Message;
 use crate::app::App;
@@ -55,7 +55,7 @@ fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
             );
 
         let messages = if loaded_chat.id.is_none() {
-           None
+            None
         } else {
             Some(app.main_window.chat_manager.get_messages(loaded_chat.id.unwrap()))
         };
@@ -127,17 +127,29 @@ fn create_main_and_footer(f: &mut Frame) -> (Rect, Rect) {
 }
 
 fn build_chats(chats: &[Chat], fg_color: Color) -> List {
+    // let items: Vec<ListItem> = chats
+    //     .iter()
+        // // .flat_map(|s| vec![ListItem::new(*s), ListItem::new("")])
+        // .map(|s| ListItem::new(s.name.as_str()))
+        // .collect();
     let items: Vec<ListItem> = chats
         .iter()
-        // .flat_map(|s| vec![ListItem::new(*s), ListItem::new("")])
-        .map(|s| ListItem::new(s.name.as_str()))
+        .map(|s| {
+            let name = s.name.clone();
+            let message_dt = Line::from(vec![
+                Span::from(format!("{name:<9}")),
+                " ".into(),
+                s.last_message.as_ref().map(|message| message.sent_at.to_string()).unwrap_or_else(|| "yesterday".to_string()).italic(),
+            ]);
+
+            ListItem::new(message_dt)
+        })
         .collect();
 
     List::new(items)
         .block(Block::default().title("Chats").borders(Borders::ALL).border_type(BorderType::Plain))
         .style(Style::default().fg(fg_color))
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD))
-        .highlight_symbol(">")
+        .highlight_style(Style::default().bg(THEME.fg).bold().black())
         .repeat_highlight_symbol(true)
         .direction(ListDirection::TopToBottom)
 }

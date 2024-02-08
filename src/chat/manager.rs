@@ -112,7 +112,7 @@ impl ChatManager {
     }
 
     pub fn select_previous_chat(&mut self) {
-        self.chats.previous();
+        self.get_active_chats_mut().previous();
     }
 
     pub fn select_next_chat(&mut self) {
