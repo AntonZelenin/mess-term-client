@@ -29,7 +29,7 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
         );
 
     let main_color = ui::get_main_color(app);
-    let chats = app.main_window.chat_manager.get_chats_mut();
+    let chats = app.main_window.chat_manager.get_active_chats_mut();
     f.render_widget(search_input, search_area);
     f.render_stateful_widget(
         build_chats(

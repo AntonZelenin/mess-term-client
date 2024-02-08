@@ -8,7 +8,7 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use url::Url;
 use crate::{auth, helpers};
-use crate::chat::{ChatModel, NewChatModel, SearchResults};
+use crate::chat::{ChatModel, ChatSearchResults, NewChatModel, UserSearchResults};
 use crate::auth::AuthTokens;
 use crate::chat::message::NewMessage;
 
@@ -146,13 +146,13 @@ impl Client {
         self.auth_tokens.is_some()
     }
 
-    pub async fn get_chats(&mut self) -> Result<Vec<ChatModel>, String> {
+    pub async fn get_chats(&mut self) -> Result<ChatSearchResults, String> {
         match self.get(&format!("http://{}/chats", MESSAGE_SERVICE_API_URL), vec![]).await {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .await
                     .map_err(|e| e.to_string())?;
-                let chats: Vec<ChatModel> = serde_json::from_str(&data.to_string()).unwrap();
+                let chats: ChatSearchResults = serde_json::from_str(&data.to_string()).unwrap();
                 Ok(chats)
             }
             Err(e) => {
@@ -161,14 +161,32 @@ impl Client {
             }
         }
     }
-    pub async fn search_chats_and_users(&mut self, username: String) -> Result<SearchResults, String> {
+
+    pub async fn search_chats(&mut self, username: String) -> Result<ChatSearchResults, String> {
+        match self.get(&format!("http://{}/chats", MESSAGE_SERVICE_API_URL), vec![("username".parse().unwrap(), username)]).await {
+            Ok(res) => {
+                let data = res.json::<serde_json::Value>()
+                    .await
+                    .map_err(|e| e.to_string())?;
+                // todo all these things must be done using derive serialize
+                let users: ChatSearchResults = serde_json::from_str(&data.to_string()).unwrap();
+                Ok(users)
+            }
+            Err(e) => {
+                // todo logger.error(e);
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn search_users(&mut self, username: String) -> Result<UserSearchResults, String> {
         match self.get(&format!("http://{}/users", USER_SERVICE_API_URL), vec![("username".parse().unwrap(), username)]).await {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .await
                     .map_err(|e| e.to_string())?;
                 // todo all these things must be done using derive serialize
-                let users: SearchResults = serde_json::from_str(&data.to_string()).unwrap();
+                let users: UserSearchResults = serde_json::from_str(&data.to_string()).unwrap();
                 Ok(users)
             }
             Err(e) => {

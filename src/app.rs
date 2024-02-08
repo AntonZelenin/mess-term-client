@@ -87,15 +87,22 @@ impl App {
                             self.loaded_internal_chat_id = Some(chat.internal_id.clone());
                             self.main_window.set_active_input_entity(window::main::ActiveInputEntity::EnterMessage);
                         } else {
-                            let search_results = self.api_client.search_chats_and_users(self.main_window.get_active_input()).await.unwrap();
+                            let name_like = self.main_window.get_active_input();
+                            if name_like.is_empty() {
+                                self.main_window.chat_manager.clear_search_results();
+                                return;
+                            }
 
-                            let mut chats = search_results
+                            let chat_search_results = self.api_client.search_chats(name_like.clone()).await.unwrap();
+                            let user_search_results = self.api_client.search_users(name_like.clone()).await.unwrap();
+
+                            let mut chats = chat_search_results
                                 .chats
                                 .iter()
                                 .map(|chat| Chat::from_model(chat.clone()))
                                 .collect::<Vec<Chat>>();
 
-                            for user in search_results.users {
+                            for user in user_search_results.users {
                                 chats.push(Chat {
                                     internal_id: user.username.clone(),
                                     id: None,
@@ -220,14 +227,14 @@ impl App {
     }
 
     async fn load_chats_and_messages(api_client: &mut api::Client) -> (Vec<Chat>, HashMap<ChatId, Vec<Message>>) {
-        let chat_models = api_client.get_chats().await.unwrap();
+        let chat_results = api_client.get_chats().await.unwrap();
 
         let mut messages = HashMap::new();
-        for chat in chat_models.iter() {
+        for chat in chat_results.chats.iter() {
             messages.insert(chat.id, chat.messages.clone());
         }
         let mut chats = Vec::new();
-        for chat_model in chat_models {
+        for chat_model in chat_results.chats {
             let chat = Chat::from_model(chat_model);
             chats.push(chat);
         }

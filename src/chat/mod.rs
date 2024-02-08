@@ -100,7 +100,11 @@ pub struct User {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct SearchResults {
+pub struct UserSearchResults {
     pub users: Vec<User>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ChatSearchResults {
     pub chats: Vec<ChatModel>,
 }

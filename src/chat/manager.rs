@@ -60,15 +60,7 @@ impl ChatManager {
         Some(self.chats.get(chat_id).clone())
     }
 
-    pub fn get_chats(&self) -> &Vec<Chat> {
-        if self.search_results.is_empty() {
-            &self.chats.items
-        } else {
-            &self.search_results.items
-        }
-    }
-
-    pub fn get_chats_mut(&mut self) -> &mut StatefulOrderedList<Chat> {
+    pub fn get_active_chats_mut(&mut self) -> &mut StatefulOrderedList<Chat> {
         if self.search_results.is_empty() {
             &mut self.chats
         } else {
@@ -80,9 +72,10 @@ impl ChatManager {
         self.messages.get(&chat_id).expect("Chat messages not found")
     }
 
-    /// Search results combine both existing chats and users with which the user can start a new chat
+    /// Search results combines both existing chats and users with which the user can start a new chat
     /// potential new chats do not have an id, only a random internal id
     pub fn set_search_results(&mut self, search_results: Vec<Chat>) {
+        self.clear_search_results();
         self.search_results.extend(search_results);
     }
 
@@ -100,6 +93,6 @@ impl ChatManager {
     }
 
     pub fn select_next_chat(&mut self) {
-        self.chats.next();
+        self.get_active_chats_mut().next();
     }
 }
