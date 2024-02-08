@@ -1,11 +1,12 @@
 use futures::{SinkExt, StreamExt};
 use futures::stream::{SplitSink, SplitStream};
-use reqwest::Response;
+use reqwest::{Response, StatusCode};
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::http::header::AUTHORIZATION;
 use tokio_tungstenite::tungstenite::http::Request;
 use tokio_tungstenite::tungstenite::protocol::Message;
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{connect_async, MaybeTlsStream, tungstenite, WebSocketStream};
+use tokio_tungstenite::tungstenite::Error;
 use url::Url;
 use crate::{auth, helpers, schemas};
 use crate::schemas::{NewMessage, RefreshTokenData, RegisterData};
@@ -25,7 +26,6 @@ type ReadMessageWs = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 struct RequestParams {
     uri: String,
     query_params: Vec<(String, String)>,
-    path_params: Vec<(String, String)>,
     body: Option<serde_json::Value>,
     can_reauthenticate: bool,
 }
@@ -41,7 +41,6 @@ impl Default for RequestParams {
         Self {
             uri: "".to_string(),
             query_params: vec![],
-            path_params: vec![],
             body: None,
             can_reauthenticate: true,
         }
@@ -51,9 +50,9 @@ impl Default for RequestParams {
 pub struct Client {
     client: reqwest::Client,
     auth_tokens: Option<AuthTokens>,
-    auth_tokens_store_callback: Box<dyn Fn(&AuthTokens)>,
-    write_ws: Option<WriteMessageWs>,
-    read_ws: Option<ReadMessageWs>,
+    store_auth_tokens_callback: Box<dyn Fn(&AuthTokens)>,
+    write_message_ws: Option<WriteMessageWs>,
+    read_message_ws: Option<ReadMessageWs>,
 }
 
 impl Client {
@@ -61,13 +60,13 @@ impl Client {
         let mut obj = Self {
             client: reqwest::Client::new(),
             auth_tokens,
-            auth_tokens_store_callback: Box::new(auth::store_auth_tokens),
-            write_ws: None,
-            read_ws: None,
+            store_auth_tokens_callback: Box::new(auth::store_auth_tokens),
+            write_message_ws: None,
+            read_message_ws: None,
         };
 
         if obj.auth_tokens.is_some() {
-            obj.connect_to_message_ws().await;
+            obj.connect_to_message_ws(RequestParams::default()).await;
         }
 
         obj
@@ -106,7 +105,7 @@ impl Client {
 
         self.set_auth_tokens(AuthTokens::new(&jwt, &refresh_token));
 
-        self.connect_to_message_ws().await;
+        self.connect_to_message_ws(RequestParams::default()).await;
 
         Ok(())
     }
@@ -152,7 +151,7 @@ impl Client {
 
         self.set_auth_tokens(AuthTokens::new(&jwt, &refresh_token));
 
-        self.connect_to_message_ws().await;
+        self.connect_to_message_ws(RequestParams::default()).await;
 
         Ok(())
     }
@@ -226,7 +225,7 @@ impl Client {
 
     pub async fn send_message(&mut self, message: NewMessage) {
         let send_message = self
-            .write_ws
+            .write_message_ws
             .as_mut()
             .expect("Unauthenticated")
             .send(Message::Text(serde_json::to_string(&message).unwrap()));
@@ -256,7 +255,7 @@ impl Client {
     }
 
     pub async fn receive_message(&mut self) -> Option<schemas::Message> {
-        if let Some(message) = self.read_ws.as_mut().expect("Unauthenticated").next().await {
+        if let Some(message) = self.read_message_ws.as_mut().expect("Unauthenticated").next().await {
             match message {
                 Ok(Message::Text(text)) => {
                     match serde_json::from_str::<schemas::Message>(&text) {
@@ -287,7 +286,7 @@ impl Client {
         None
     }
 
-    async fn post(&mut self, mut rp: RequestParams) -> Result<reqwest::Response, String> {
+    async fn post(&mut self, mut rp: RequestParams) -> Result<Response, String> {
         loop {
             let url = Url::parse_with_params(&rp.uri, rp.query_params.clone()).map_err(|e| e.to_string())?;
             let res = self.
@@ -315,10 +314,10 @@ impl Client {
     }
 
     fn should_refresh_tokens(&mut self, rp: &mut RequestParams, res: &Response) -> bool {
-        res.status() == reqwest::StatusCode::from_u16(401).unwrap() && rp.can_reauthenticate && self.auth_tokens.is_some()
+        res.status() == StatusCode::UNAUTHORIZED && rp.can_reauthenticate && self.auth_tokens.is_some()
     }
 
-    async fn get(&mut self, mut rp: RequestParams) -> Result<reqwest::Response, String> {
+    async fn get(&mut self, mut rp: RequestParams) -> Result<Response, String> {
         let url = Url::parse_with_params(&rp.uri, rp.query_params.clone()).map_err(|e| e.to_string())?;
         let res = self.
             client
@@ -380,31 +379,47 @@ impl Client {
         Ok(())
     }
 
-    async fn connect_to_message_ws(&mut self) {
-        // todo it cannot handle refresh token and unauthenticated requests
-        let request = Request::builder()
-            .uri(MESSAGE_WEBSOCKET_URL)
-            .header(AUTHORIZATION, self.get_authorization_header())
-            .header("sec-websocket-key", helpers::generate_sec_websocket_key())
-            .header("host", HOST)
-            .header("upgrade", "websocket")
-            .header("connection", "upgrade")
-            .header("sec-websocket-version", 13)
-            .body(())
-            .expect("Failed to build request.");
+    async fn connect_to_message_ws(&mut self, mut rp: RequestParams) {
+        loop {
+            let request = Request::builder()
+                .uri(MESSAGE_WEBSOCKET_URL)
+                .header(AUTHORIZATION, self.get_authorization_header())
+                .header("sec-websocket-key", helpers::generate_sec_websocket_key())
+                .header("host", HOST)
+                .header("upgrade", "websocket")
+                .header("connection", "upgrade")
+                .header("sec-websocket-version", 13)
+                .body(())
+                .expect("Failed to build request.");
 
-        let (ws_stream, _) = connect_async(request)
-            .await
-            .expect("Failed to connect to WebSocket");
-
-        let (write_ws, read_ws) = ws_stream.split();
-        self.write_ws = Some(write_ws);
-        self.read_ws = Some(read_ws);
+            match connect_async(request).await {
+                Ok((ws_stream, _)) => {
+                    let (write_ws, read_ws) = ws_stream.split();
+                    self.write_message_ws = Some(write_ws);
+                    self.read_message_ws = Some(read_ws);
+                    break;
+                }
+                Err(Error::Http(response)) => {
+                    if response.status() == tungstenite::http::StatusCode::UNAUTHORIZED && rp.can_reauthenticate {
+                        if self.auth_tokens.is_some() {
+                            self.refresh_token(&mut rp).await.expect("Failed to refresh token");
+                            continue;
+                        } else {
+                            panic!("Can't connect to ws: Unauthenticated");
+                        }
+                    }
+                    panic!("Failed to connect to message websocket: {}", response.status());
+                }
+                Err(e) => {
+                    panic!("Failed to connect to message websocket: {}", e);
+                }
+            }
+        }
     }
 
     fn set_auth_tokens(&mut self, tokens: AuthTokens) {
         self.auth_tokens = Some(tokens.clone());
-        (self.auth_tokens_store_callback)(&tokens);
+        (self.store_auth_tokens_callback)(&tokens);
     }
 
     fn get_authorization_header(&mut self) -> String {
