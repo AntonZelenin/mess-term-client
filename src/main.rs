@@ -24,16 +24,19 @@ async fn main() -> Result<()> {
     while !app.should_quit() {
         tui.draw(&mut app)?;
 
-        match tui.events.next()? {
-            Event::Tick => {
-                app.tick();
-            }
-            Event::Key(key_event) => process(&mut app, key_event).await,
-            Event::Mouse(_) => {}
-            Event::Resize(_, _) => {}
-        };
-
-        app.receive_message().await;
+        tokio::select! {
+            _ = app.receive_message() => {},
+            event = tui.events.next() => {
+                match event {
+                    Event::Tick => {
+                        app.tick();
+                    },
+                    Event::Key(key_event) => process(&mut app, key_event).await,
+                    Event::Mouse(_) => {},
+                    Event::Resize(_, _) => {},
+                }
+            },
+        }
     }
 
     tui.exit()?;

@@ -224,11 +224,18 @@ impl Client {
                         }
                     }
                 }
+                Ok(Message::Binary(_)) => {
+                    panic!("Received a binary message");
+                }
+                Ok(Message::Ping(_)) | Ok(Message::Pong(_)) => {}
+                Ok(Message::Close(_)) => {
+                    unimplemented!("Handle close messages, possibly clean up or reconnect");
+                }
                 Err(e) => {
                     panic!("Failed to receive message: {}", e);
                 }
                 _ => {
-                    panic!("Received non-text message");
+                    panic!("Received unexpected message type");
                 }
             }
         };
