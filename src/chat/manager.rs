@@ -8,6 +8,7 @@ pub struct ChatManager {
     chats: StatefulOrderedList<Chat>,
     messages: HashMap<ChatId, Vec<Message>>,
     search_results: StatefulOrderedList<Chat>,
+    loaded_internal_chat_id: Option<String>,
 }
 
 impl ChatManager {
@@ -43,21 +44,43 @@ impl ChatManager {
         self.messages.get_mut(&message.chat_id).expect("Chat messages not found").push(message);
     }
 
-    pub fn select_chat(&mut self, chat_id: ChatId) -> Chat {
-        self.chats.select(&chat_id.to_string())
+    pub fn load_chat(&mut self, chat_id: String) {
+        self.loaded_internal_chat_id = Some(chat_id.clone());
     }
 
     pub fn unselect_chat(&mut self) {
-        self.chats.unselect();
+        let chats = self.get_active_chats_mut();
+        chats.unselect();
     }
 
     pub fn get_selected_chat(&self) -> Option<Chat> {
-        if self.chats.selected_item_id.is_none() {
+        let chats = self.get_active_chats();
+        if chats.selected_item_id.is_none() {
             return None;
         }
 
-        let chat_id = self.chats.selected_item_id.as_ref().expect("Chat not found");
-        Some(self.chats.get(chat_id).clone())
+        let chat_id = chats.selected_item_id.as_ref().expect("Chat not found");
+        Some(chats.get(chat_id).clone())
+    }
+
+    pub fn get_loaded_chat(&self) -> Option<&Chat> {
+        let chats = self.get_active_chats();
+        if let Some(chat_id) = &self.loaded_internal_chat_id {
+            return Some(chats.get(&chat_id));
+        }
+        None
+    }
+
+    pub fn unload_chat(&mut self) {
+        self.loaded_internal_chat_id = None;
+    }
+
+    pub fn get_active_chats(&self) -> &StatefulOrderedList<Chat> {
+        if self.search_results.is_empty() {
+            &self.chats
+        } else {
+            &self.search_results
+        }
     }
 
     pub fn get_active_chats_mut(&mut self) -> &mut StatefulOrderedList<Chat> {

@@ -35,16 +35,16 @@ impl<T> StatefulOrderedList<T>
         self.build_indices();
     }
 
-
-    pub fn select(&mut self, item_id: &String) -> T {
-        self.selected_item_id = Some(item_id.clone());
-        self.update_state();
-        self.item_indices.get(item_id).map(|i| &self.items[*i]).expect("Item not found").clone()
-    }
+    // pub fn select(&mut self, item_id: &String) -> T {
+    //     self.selected_item_id = Some(item_id.clone());
+    //     self.update_state();
+    //     self.item_indices.get(item_id).map(|i| &self.items[*i]).expect("Item not found").clone()
+    // }
 
     pub fn unselect(&mut self) {
         self.selected_item_id = None;
-        self.update_state();
+        self.state.select(None);
+        // self.update_state();
     }
 
     pub fn next(&mut self) {
@@ -62,6 +62,7 @@ impl<T> StatefulOrderedList<T>
             None => 0,
         };
         self.state.select(Some(i));
+        self.selected_item_id = Some(self.items[i].internal_id());
     }
 
     pub fn previous(&mut self) {
@@ -79,6 +80,7 @@ impl<T> StatefulOrderedList<T>
             None => 0,
         };
         self.state.select(Some(i));
+        self.selected_item_id = Some(self.items[i].internal_id());
     }
 
     pub fn is_empty(&self) -> bool {

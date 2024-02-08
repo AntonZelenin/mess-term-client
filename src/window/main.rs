@@ -92,8 +92,19 @@ impl InputEntity for MainWindow {
                 self.move_chat_cursor_down();
             }
             KeyCode::Esc => {
-                self.chat_manager.clear_search_results();
-                self.search_input.clear();
+                if self.chat_manager.get_loaded_chat().is_some() {
+                    self.chat_manager.unload_chat();
+                    self.message_input.clear();
+                    self.reset_cursor();
+                    self.set_active_input_entity(ActiveInputEntity::SearchChats);
+                } else if self.chat_manager.get_selected_chat().is_some() {
+                    self.chat_manager.unselect_chat();
+                } else {
+                    // todo method?
+                    self.chat_manager.clear_search_results();
+                    self.search_input.clear();
+                    self.reset_cursor();
+                }
             }
             // KeyCode::Tab => {
             //     self.switch_to_next_input();

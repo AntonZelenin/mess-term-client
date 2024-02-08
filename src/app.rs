@@ -13,7 +13,6 @@ pub struct App {
     pub login_window: LoginWindow,
     pub main_window: MainWindow,
     active_window: Windows,
-    loaded_internal_chat_id: Option<String>,
     api_client: api::Client,
     should_quit: bool,
     username: String,
@@ -36,7 +35,6 @@ impl App {
             login_window: LoginWindow::default(),
             main_window: MainWindow::default(),
             active_window: if !api_client.is_authenticated() { Windows::Login } else { Windows::Main },
-            loaded_internal_chat_id: None,
             api_client,
             should_quit: false,
             username: Self::load_username(),
@@ -84,7 +82,7 @@ impl App {
                 match self.main_window.get_active_input_entity() {
                     window::main::ActiveInputEntity::SearchChats => {
                         if let Some(chat) = self.main_window.chat_manager.get_selected_chat() {
-                            self.loaded_internal_chat_id = Some(chat.internal_id.clone());
+                            self.main_window.chat_manager.load_chat(chat.internal_id.clone());
                             self.main_window.set_active_input_entity(window::main::ActiveInputEntity::EnterMessage);
                         } else {
                             let name_like = self.main_window.get_active_input();

@@ -44,24 +44,29 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
 fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
     let (message_list_area, message_input_area) = create_message_area(messages_area);
 
-    if let Some(selected_chat) = app.main_window.chat_manager.get_selected_chat() {
+    if let Some(loaded_chat) = app.main_window.chat_manager.get_loaded_chat() {
         let message_input = app.main_window.get_message();
         let message_paragraph = Paragraph::new(message_input.as_str())
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_type(BorderType::Plain)
-                    .style(Style::default().fg(THEME.active))
+                    .style(Style::default().fg(THEME.fg))
             );
 
+        let messages = if loaded_chat.id.is_none() {
+           None
+        } else {
+            Some(app.main_window.chat_manager.get_messages(loaded_chat.id.unwrap()))
+        };
         f.render_widget(
-            build_messages(app.main_window.chat_manager.get_messages(selected_chat.id.unwrap()), THEME.fg),
+            build_messages(messages, THEME.fg),
             message_list_area,
         );
         f.render_widget(message_paragraph, message_input_area);
     } else {
         f.render_widget(
-            get_chat_hints(THEME.active),
+            get_chat_hints(THEME.fg),
             messages_area,
         );
     }
@@ -152,15 +157,20 @@ fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
             Block::default()
                 .title_alignment(Alignment::Center),
         )
-        .style(Style::default().fg(THEME.active))
+        .style(Style::default().fg(THEME.fg))
         .alignment(Alignment::Center)
 }
 
-fn build_messages(messages: &Vec<Message>, fg_color: Color) -> List {
-    let items: Vec<ListItem> = messages
-        .iter()
-        .map(|s| ListItem::new(s.text.clone()))
-        .collect();
+fn build_messages(messages: Option<&Vec<Message>>, fg_color: Color) -> List {
+    let items: Vec<ListItem> = if messages.is_some() {
+        messages
+            .unwrap()
+            .iter()
+            .map(|s| ListItem::new(s.text.clone()))
+            .collect()
+    } else {
+        vec![]
+    };
 
     List::new(items)
         .block(Block::default().title("Messages").borders(Borders::ALL))
