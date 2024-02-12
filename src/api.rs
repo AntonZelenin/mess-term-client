@@ -229,7 +229,7 @@ impl Client {
             .as_mut()
             .expect("Unauthenticated")
             .send(Message::Text(serde_json::to_string(&message).unwrap()));
-        let _ = send_message
+        send_message
             .await
             .expect("Failed to send message");
     }
