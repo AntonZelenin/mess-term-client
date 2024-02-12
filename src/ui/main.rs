@@ -6,7 +6,7 @@ use crate::schemas::Message;
 use crate::app::App;
 use crate::chat::Chat;
 use crate::constants::THEME;
-use crate::ui;
+use crate::{helpers, ui};
 
 pub fn render_main(app: &mut App, f: &mut Frame) {
     let (main_area, footer_area) = create_main_and_footer(f);
@@ -19,8 +19,8 @@ pub fn render_main(app: &mut App, f: &mut Frame) {
 }
 
 fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area: Rect) {
-    let search_input = app.main_window.get_search_input();
-    let search_input = Paragraph::new(search_input.as_str())
+    let search_input_value = helpers::input_to_string(&app.main_window.get_search_input());
+    let search_input = Paragraph::new(search_input_value.as_str())
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -46,8 +46,8 @@ fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
     let (message_list_area, message_input_area) = create_message_area(messages_area);
 
     if let Some(loaded_chat) = app.main_window.chat_manager.get_loaded_chat() {
-        let message_input = app.main_window.get_message();
-        let message_paragraph = Paragraph::new(message_input.as_str())
+        let message_input_value = helpers::input_to_string(&app.main_window.get_message());
+        let message_paragraph = Paragraph::new(message_input_value.as_str())
             .block(
                 Block::default()
                     .borders(Borders::ALL)

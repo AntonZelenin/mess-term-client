@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use crossterm::event::KeyEvent;
-use crate::{api, window};
+use crate::{api, helpers, window};
 use crate::schemas::{Message, NewMessage};
 use crate::chat::{Chat, NewChatModel};
 use crate::chat::manager::ChatManager;
-use crate::helpers::types::ChatId;
+use crate::helpers::types::{ChatId, TextInput};
 use crate::window::InputEntity;
 use crate::window::login::{LoginTabs, LoginWindow};
 use crate::window::main::MainWindow;
@@ -115,7 +115,7 @@ impl App {
                         }
                     }
                     window::main::ActiveInputEntity::EnterMessage => {
-                        let message_str = self.main_window.pop_message_input();
+                        let message_str = helpers::input_to_string(&self.main_window.pop_message_input());
                         // todo new chats do not have id.. will it contain None for new chats?
                         let chat = self.main_window.chat_manager.get_selected_chat().unwrap();
                         if chat.id.is_some() {
@@ -158,8 +158,10 @@ impl App {
             self.login_window.login_error_message = "Username and password are required.".to_string();
             return;
         }
+        let username = helpers::input_to_string(&res["username"]);
+        let password = helpers::input_to_string(&res["password"]);
 
-        match self.api_client.login(&res["username"], &res["password"]).await {
+        match self.api_client.login(&username, &password).await {
             Ok(_) => {
                 let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client).await;
                 self.main_window.chat_manager.add_chats(chats);
@@ -181,8 +183,10 @@ impl App {
             self.login_window.register_error_message = error;
             return;
         }
+        let username = helpers::input_to_string(&res["username"]);
+        let password = helpers::input_to_string(&res["password"]);
 
-        match self.api_client.register(&res["username"], &res["password"]).await {
+        match self.api_client.register(&username, &password).await {
             Ok(_) => {
                 let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client).await;
                 self.main_window.chat_manager.add_chats(chats);
@@ -196,7 +200,7 @@ impl App {
         }
     }
 
-    fn validate_register_input(&self, input_values: &HashMap<String, String>) -> Option<String> {
+    fn validate_register_input(&self, input_values: &HashMap<String, TextInput>) -> Option<String> {
         // todo returning only one error message is temporary
         let mut error_message = String::new();
 

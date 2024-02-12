@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent};
+use crate::helpers::types::TextInput;
 use crate::window::InputEntity;
 
 #[derive(Debug, Clone, Copy)]
@@ -20,43 +21,43 @@ pub enum LoginTabs {
 // todo why all this in states? Bad place, bad name
 pub struct LoginWindow {
     // Login
-    pub username_input: String,
-    pub password_input: String,
+    pub username_input: TextInput,
+    pub password_input: TextInput,
     pub login_error_message: String,
 
     // Register
-    pub register_username_input: String,
-    pub register_password_input: String,
-    pub register_password_confirmation_input: String,
+    pub register_username_input: TextInput,
+    pub register_password_input: TextInput,
+    pub register_password_confirmation_input: TextInput,
     pub register_error_message: String,
 
     pub active_input_field: LoginActiveInput,
     pub active_tab: LoginTabs,
     cursor_position: usize,
 
-    actual_password_input: String,
-    actual_register_password_input: String,
-    actual_register_password_confirmation_input: String,
+    actual_password_input: TextInput,
+    actual_register_password_input: TextInput,
+    actual_register_password_confirmation_input: TextInput,
 }
 
 impl Default for LoginWindow {
     fn default() -> Self {
         Self {
-            username_input: String::new(),
-            password_input: String::new(),
+            username_input: TextInput::new(),
+            password_input: TextInput::new(),
             login_error_message: String::new(),
 
-            register_username_input: String::new(),
-            register_password_input: String::new(),
-            register_password_confirmation_input: String::new(),
+            register_username_input: TextInput::new(),
+            register_password_input: TextInput::new(),
+            register_password_confirmation_input: TextInput::new(),
             register_error_message: String::new(),
 
             active_input_field: LoginActiveInput::Username,
             active_tab: LoginTabs::Login,
             cursor_position: 0,
-            actual_password_input: String::new(),
-            actual_register_password_input: String::new(),
-            actual_register_password_confirmation_input: String::new(),
+            actual_password_input: TextInput::new(),
+            actual_register_password_input: TextInput::new(),
+            actual_register_password_confirmation_input: TextInput::new(),
         }
     }
 }
@@ -100,37 +101,21 @@ impl InputEntity for LoginWindow {
     }
 
     fn delete_char(&mut self) {
-        let is_not_cursor_leftmost = self.cursor_position != 0;
-        if is_not_cursor_leftmost {
-            // Method "remove" is not used on the saved text for deleting the selected char.
-            // Reason: Using remove on String works on bytes instead of the chars.
-            // Using remove would require special care because of char boundaries.
-
-            let current_index = self.cursor_position;
-            let from_left_to_current_index = current_index - 1;
-
-
-            let input = self.get_active_input();
-            // Getting all characters before the selected character.
-            let before_char_to_delete = input.chars().take(from_left_to_current_index);
-            // Getting all characters after selected character.
-            let after_char_to_delete = input.chars().skip(current_index);
-
-            // Put all characters together except the selected one.
-            // By leaving the selected one out, it is forgotten and therefore deleted.
-            let active_input_field = self.active_input_field;
-            match active_input_field {
-                LoginActiveInput::Password | LoginActiveInput::RegisterPassword | LoginActiveInput::RegisterPasswordConfirmation => {
-                    let input = self.get_active_input_mut();
-                    *input = before_char_to_delete.chain(after_char_to_delete).collect();
-                    self.get_active_ui_input_mut().pop();
-                }
-                LoginActiveInput::Username | LoginActiveInput::RegisterUsername => {
-                    *self.get_active_ui_input_mut() = before_char_to_delete.chain(after_char_to_delete).collect();
-                }
-            }
-            self.move_cursor_left();
+        if self.cursor_position == 0 {
+            return;
         }
+
+        let cursor_position = self.cursor_position - 1;
+        match self.active_input_field {
+            LoginActiveInput::Password | LoginActiveInput::RegisterPassword | LoginActiveInput::RegisterPasswordConfirmation => {
+                self.get_active_input_mut().remove(cursor_position);
+                self.get_active_ui_input_mut().remove(cursor_position);
+            }
+            LoginActiveInput::Username | LoginActiveInput::RegisterUsername => {
+                self.get_active_ui_input_mut().remove(cursor_position);
+            }
+        }
+        self.move_cursor_left();
     }
 
     fn move_cursor_left(&mut self) {
@@ -183,7 +168,7 @@ impl LoginWindow {
         self.cursor_position
     }
 
-    pub fn get_input_values(&self) -> HashMap<String, String> {
+    pub fn get_input_values(&self) -> HashMap<String, TextInput> {
         let mut input_values = HashMap::new();
         match self.active_tab {
             LoginTabs::Login => {
@@ -200,7 +185,7 @@ impl LoginWindow {
         }
     }
 
-    fn get_active_ui_input_mut(&mut self) -> &mut String {
+    fn get_active_ui_input_mut(&mut self) -> &mut TextInput {
         match self.active_input_field {
             LoginActiveInput::Username => &mut self.username_input,
             LoginActiveInput::Password => &mut self.password_input,
@@ -210,7 +195,7 @@ impl LoginWindow {
         }
     }
 
-    fn get_active_input(&self) -> String {
+    fn get_active_input(&self) -> TextInput {
         match self.active_input_field {
             LoginActiveInput::Username => self.username_input.clone(),
             LoginActiveInput::Password => self.actual_password_input.clone(),
@@ -220,7 +205,7 @@ impl LoginWindow {
         }
     }
 
-    fn get_active_input_mut(&mut self) -> &mut String {
+    fn get_active_input_mut(&mut self) -> &mut TextInput {
         match self.active_input_field {
             LoginActiveInput::Username => &mut self.username_input,
             LoginActiveInput::Password => &mut self.actual_password_input,

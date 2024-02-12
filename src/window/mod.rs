@@ -20,9 +20,12 @@ pub trait InputEntity {
 
 pub async fn process(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
-        KeyCode::Char('c') | KeyCode::Char('C') => {
+        // yes yes, I know, it's a hack and it'll work only for 3 languages: eng, ukr and rus
+        KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Char('с') | KeyCode::Char('С') | KeyCode::Char('с') | KeyCode::Char('С') => {
             if key_event.modifiers == KeyModifiers::CONTROL {
                 app.quit()
+            } else {
+                app.pass_input_to_active_entity(key_event);
             }
         }
         KeyCode::Enter => app.submit().await,

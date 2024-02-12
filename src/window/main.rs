@@ -1,5 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use crate::chat::manager::ChatManager;
+use crate::helpers;
+use crate::helpers::types::TextInput;
 use crate::window::InputEntity;
 
 #[derive(Debug, Clone, Copy)]
@@ -17,8 +19,8 @@ impl Default for ActiveInputEntity {
 #[derive(Default)]
 pub struct MainWindow {
     pub chat_manager: ChatManager,
-    search_input: String,
-    message_input: String,
+    search_input: TextInput,
+    message_input: TextInput,
     active_input_entity: ActiveInputEntity,
     cursor_position: usize,
 }
@@ -26,12 +28,12 @@ pub struct MainWindow {
 impl MainWindow {
     pub fn get_active_input(&self) -> String {
         match self.active_input_entity {
-            ActiveInputEntity::SearchChats => self.search_input.clone().to_string(),
-            ActiveInputEntity::EnterMessage => self.message_input.clone().to_string(),
+            ActiveInputEntity::SearchChats => helpers::input_to_string(&self.search_input),
+            ActiveInputEntity::EnterMessage => helpers::input_to_string(&self.message_input),
         }
     }
 
-    pub fn get_active_input_mut(&mut self) -> &mut String {
+    pub fn get_active_input_mut(&mut self) -> &mut TextInput {
         match self.active_input_entity {
             ActiveInputEntity::SearchChats => &mut self.search_input,
             ActiveInputEntity::EnterMessage => &mut self.message_input,
@@ -42,15 +44,15 @@ impl MainWindow {
         self.active_input_entity.clone()
     }
 
-    pub fn get_search_input(&self) -> String {
+    pub fn get_search_input(&self) -> TextInput {
         self.search_input.clone()
     }
 
-    pub fn get_message(&self) -> String {
+    pub fn get_message(&self) -> TextInput {
         self.message_input.clone()
     }
 
-    pub fn pop_message_input(&mut self) -> String {
+    pub fn pop_message_input(&mut self) -> TextInput {
         let message = self.message_input.clone();
         self.message_input.clear();
         message
@@ -121,26 +123,14 @@ impl InputEntity for MainWindow {
     }
 
     fn delete_char(&mut self) {
-        let is_not_cursor_leftmost = self.cursor_position != 0;
-        if is_not_cursor_leftmost {
-            // Method "remove" is not used on the saved text for deleting the selected char.
-            // Reason: Using remove on String works on bytes instead of the chars.
-            // Using remove would require special care because of char boundaries.
-
-            let current_index = self.cursor_position;
-            let from_left_to_current_index = current_index - 1;
-
-            let active_input = self.get_active_input();
-            // Getting all characters before the selected character.
-            let before_char_to_delete = active_input.chars().take(from_left_to_current_index);
-            // Getting all characters after selected character.
-            let after_char_to_delete = active_input.chars().skip(current_index);
-
-            // Put all characters together except the selected one.
-            // By leaving the selected one out, it is forgotten and therefore deleted.
-            *self.get_active_input_mut() = before_char_to_delete.chain(after_char_to_delete).collect();
-            self.move_cursor_left();
+        // todo duplicate code!!!
+        if self.cursor_position == 0 {
+            return;
         }
+
+        let cursor_position = self.cursor_position - 1;
+        self.get_active_input_mut().remove(cursor_position);
+        self.move_cursor_left();
     }
 
     fn move_cursor_left(&mut self) {
