@@ -23,28 +23,30 @@ impl<T> StatefulOrderedList<T>
         self.item_indices.get_mut(item_id).map(|i| &mut self.items[*i]).expect("Item not found")
     }
 
+    pub fn contains(&self, item_id: &String) -> bool {
+        self.item_indices.contains_key(item_id)
+    }
+
     pub fn extend(&mut self, items: Vec<T>) {
         self.items.extend(items);
-        self.items.sort();
+        self.items.sort_by(|a, b| b.cmp(a));
         self.build_indices();
     }
 
     pub fn push(&mut self, item: T) {
         self.items.push(item);
-        self.items.sort();
+        self.items.sort_by(|a, b| b.cmp(a));
         self.build_indices();
     }
 
-    // pub fn select(&mut self, item_id: &String) -> T {
-    //     self.selected_item_id = Some(item_id.clone());
-    //     self.update_state();
-    //     self.item_indices.get(item_id).map(|i| &self.items[*i]).expect("Item not found").clone()
-    // }
+    pub fn select(&mut self, item_id: &String) {
+        self.selected_item_id = Some(item_id.clone());
+        self.update_state();
+    }
 
     pub fn unselect(&mut self) {
         self.selected_item_id = None;
         self.state.select(None);
-        // self.update_state();
     }
 
     pub fn next(&mut self) {

@@ -70,6 +70,11 @@ impl MainWindow {
         self.reset_cursor();
     }
 
+    pub fn clear_search(&mut self) {
+        self.search_input.clear();
+        self.reset_cursor();
+    }
+
     fn move_chat_cursor_up(&mut self) {
         self.chat_manager.select_previous_chat();
     }

@@ -12,6 +12,7 @@ use crate::{helpers, schemas, storage};
 use crate::schemas::{NewMessage, RefreshTokenData, RegisterData};
 use crate::chat::{ChatModel, ChatSearchResults, NewChatModel, UserSearchResults};
 use crate::auth::AuthTokens;
+use crate::helpers::types::ChatId;
 
 pub const HOST: &str = "185.191.177.247:55800";
 // todo https
@@ -200,6 +201,14 @@ impl Client {
                 Err(e)
             }
         }
+    }
+
+    pub async fn mark_chat_as_read(&mut self, chat_id: ChatId) {
+        let rp = RequestParams {
+            uri: format!("http://{}/chats/{}/read", MESSAGE_SERVICE_API_URL, chat_id),
+            ..Default::default()
+        };
+        self.post(rp).await.unwrap();
     }
 
     pub async fn search_users(&mut self, username: String) -> Result<UserSearchResults, String> {

@@ -34,7 +34,7 @@ impl ChatManager {
         for (chat_id, messages) in messages {
             let chat = self.chats.get_mut(&chat_id.to_string());
             // todo what if I read them right away? I mean if the chat is open
-            chat.number_of_unread_messages += messages.len() as u32;
+            chat.number_of_unread_messages += messages.iter().filter(|m| !m.is_read).count() as u32;
 
             self.messages.get_mut(&chat_id).expect("Chat messages not found").extend(messages);
         }
@@ -43,13 +43,23 @@ impl ChatManager {
     pub fn add_message(&mut self, message: Message) {
         let chat = self.chats.get_mut(&message.chat_id.to_string());
 
-        chat.number_of_unread_messages += 1;
+        chat.number_of_unread_messages += if message.is_read { 0 } else { 1 };
 
         self.messages.get_mut(&message.chat_id).expect("Chat messages not found").push(message);
     }
 
     pub fn load_chat(&mut self, chat_id: String) {
         self.loaded_internal_chat_id = Some(chat_id.clone());
+        let chats = self.get_active_chats_mut();
+        if chats.contains(&chat_id) {
+            let chat = chats.get_mut(&chat_id);
+            chat.number_of_unread_messages = 0;
+        }
+    }
+
+    pub fn select_chat(&mut self, chat_id: String) {
+        let chats = self.get_active_chats_mut();
+        chats.select(&chat_id);
     }
 
     pub fn unselect_chat(&mut self) {

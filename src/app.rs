@@ -84,36 +84,9 @@ impl App {
                 match self.main_window.get_active_input_entity() {
                     window::main::ActiveInputEntity::SearchChats => {
                         if let Some(chat) = self.main_window.chat_manager.get_selected_chat() {
-                            self.main_window.chat_manager.load_chat(chat.internal_id.clone());
-                            self.main_window.set_active_input_entity(window::main::ActiveInputEntity::EnterMessage);
+                            self.open_chat(chat).await;
                         } else {
-                            let name_like = self.main_window.get_active_input();
-                            if name_like.is_empty() {
-                                self.main_window.chat_manager.clear_search_results();
-                                return;
-                            }
-
-                            let chat_search_results = self.api_client.search_chats(name_like.clone()).await.unwrap();
-                            let user_search_results = self.api_client.search_users(name_like.clone()).await.unwrap();
-
-                            let mut chats = chat_search_results
-                                .chats
-                                .iter()
-                                .map(|chat| Chat::from_model(chat.clone()))
-                                .collect::<Vec<Chat>>();
-
-                            for user in user_search_results.users {
-                                chats.push(Chat {
-                                    internal_id: user.username.clone(),
-                                    id: None,
-                                    name: user.username.clone(),
-                                    member_usernames: vec![user.username.clone()],
-                                    last_message: None,
-                                    number_of_unread_messages: 0,
-                                });
-                            }
-
-                            self.main_window.chat_manager.set_search_results(chats);
+                            self.run_search().await;
                         }
                     }
                     window::main::ActiveInputEntity::EnterMessage => {
@@ -132,8 +105,7 @@ impl App {
                             self.send_message(message).await;
                         } else {
                             let new_chat = NewChatModel {
-                                name: Some(chat.name.clone()),
-                                creator_username: self.username.clone().unwrap(),
+                                name: None,
                                 member_usernames: chat.member_usernames.clone(),
                                 first_message: message_str,
                             };
@@ -143,6 +115,44 @@ impl App {
                 }
             }
         }
+    }
+
+    async fn open_chat(&mut self, chat: Chat) {
+        if chat.id.is_some() {
+            self.api_client.mark_chat_as_read(chat.id.unwrap()).await;
+        }
+        self.main_window.chat_manager.load_chat(chat.internal_id.clone());
+        self.main_window.set_active_input_entity(window::main::ActiveInputEntity::EnterMessage);
+    }
+
+    async fn run_search(&mut self) {
+        let name_like = self.main_window.get_active_input();
+        if name_like.is_empty() {
+            self.main_window.chat_manager.clear_search_results();
+            return;
+        }
+
+        let chat_search_results = self.api_client.search_chats(name_like.clone()).await.unwrap();
+        let user_search_results = self.api_client.search_users(name_like.clone()).await.unwrap();
+
+        let mut chats = chat_search_results
+            .chats
+            .iter()
+            .map(|chat| Chat::from_model(chat.clone()))
+            .collect::<Vec<Chat>>();
+
+        for user in user_search_results.users {
+            chats.push(Chat {
+                internal_id: user.username.clone(),
+                id: None,
+                name: user.username.clone(),
+                member_usernames: vec![user.username.clone(), get_username()],
+                last_message: None,
+                number_of_unread_messages: 0,
+            });
+        }
+
+        self.main_window.chat_manager.set_search_results(chats);
     }
 
     pub async fn receive_message(&mut self) {
@@ -236,7 +246,17 @@ impl App {
 
     async fn create_chat(&mut self, chat: NewChatModel) {
         let chat_model = self.api_client.create_chat(chat).await.unwrap();
+        let mut messages = HashMap::new();
+        let chat_id = chat_model.id.clone();
+        messages.insert(chat_id.clone(), chat_model.messages.clone());
+
+        // order is important: first clear search, then select chat
+        self.main_window.chat_manager.clear_search_results();
+        self.main_window.clear_search();
         self.main_window.chat_manager.add_chat(Chat::from_model(chat_model));
+        self.main_window.chat_manager.add_messages(messages);
+        self.main_window.chat_manager.select_chat(chat_id.to_string());
+        self.main_window.chat_manager.load_chat(chat_id.to_string());
     }
 
     async fn load_chats_and_messages(api_client: &mut api::Client) -> (Vec<Chat>, HashMap<ChatId, Vec<Message>>) {

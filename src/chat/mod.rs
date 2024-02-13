@@ -18,7 +18,6 @@ pub struct ChatModel {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NewChatModel {
     pub name: Option<String>,
-    pub creator_username: String,
     pub member_usernames: Vec<String>,
     pub first_message: String,
 }
@@ -85,7 +84,7 @@ impl Chat {
         let chat_name = if let Some(name) = chat_model.name {
             name
         } else {
-            assert_eq!(chat_model.member_usernames.len(), 2, "Chat name is None and chat has more than 2 members");
+            assert_eq!(chat_model.member_usernames.len(), 2, "Chat name is None and chat has more or less than 2 members");
 
             let current_username = app::get_username();
             chat_model.member_usernames.iter().find(|username| *username != &current_username).unwrap().clone()
