@@ -183,17 +183,16 @@ fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
 }
 
 fn build_messages(messages: Option<&Vec<Message>>, fg_color: Color) -> List {
-    let items: Vec<ListItem> = if messages.is_some() {
-        messages
-            .unwrap()
-            .iter()
-            .rev()
-            .map(|s| ListItem::new(s.text.clone()))
-            .collect()
-    } else {
-        vec![]
-    };
-
+    let mut items: Vec<ListItem> = vec![];
+    let mut sender_username = None;
+    for message in messages.unwrap_or(&vec![]).iter().rev() {
+        if sender_username.is_none() || sender_username.clone().unwrap() != message.sender_username {
+            sender_username = Some(message.sender_username.clone());
+            items.push(ListItem::new(format!("{}:", message.sender_username)).style(Style::default().bold().bg(THEME.inactive)));
+        }
+        items.push(ListItem::new(message.text.clone()));
+    }
+    
     List::new(items)
         .block(Block::default().title("Messages").borders(Borders::ALL))
         .style(Style::default().fg(fg_color))

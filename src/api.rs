@@ -203,6 +203,26 @@ impl Client {
         }
     }
 
+    pub async fn get_chat(&mut self, chat_id: ChatId) -> Result<ChatModel, String> {
+        let rp = RequestParams {
+            uri: format!("http://{}/chats/{}", MESSAGE_SERVICE_API_URL, chat_id),
+            ..Default::default()
+        };
+        match self.get(rp).await {
+            Ok(res) => {
+                let data = res.json::<serde_json::Value>()
+                    .await
+                    .map_err(|e| e.to_string())
+                    .expect("Failed to parse response");
+                Ok(serde_json::from_str(&data.to_string()).unwrap())
+            }
+            Err(e) => {
+                // todo logger.error(e);
+                Err(e)
+            }
+        }
+    }
+
     pub async fn mark_chat_as_read(&mut self, chat_id: ChatId) {
         let rp = RequestParams {
             uri: format!("http://{}/chats/{}/read", MESSAGE_SERVICE_API_URL, chat_id),

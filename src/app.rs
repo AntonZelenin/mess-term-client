@@ -162,7 +162,8 @@ impl App {
 
         if let Some(message) = self.api_client.receive_message().await {
             if !self.main_window.chat_manager.has_chat(&message.chat_id) {
-                unimplemented!("load this chat first and add it");
+                let chat = self.api_client.get_chat(message.chat_id).await.unwrap();
+                self.main_window.chat_manager.add_chat(Chat::from_model(chat));
             }
             self.main_window.chat_manager.add_message(message);
         }
