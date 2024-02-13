@@ -80,7 +80,6 @@ impl Ord for Chat {
 impl Chat {
     pub fn from_model(chat_model: ChatModel) -> Self {
         let last_message = chat_model.messages.last().cloned();
-        let number_of_unread_messages = chat_model.messages.iter().filter(|m| !m.is_read).count() as u32;
         let chat_name = if let Some(name) = chat_model.name {
             name
         } else {
@@ -96,7 +95,7 @@ impl Chat {
             name: chat_name,
             member_usernames: chat_model.member_usernames,
             last_message,
-            number_of_unread_messages,
+            number_of_unread_messages: 0,
         }
     }
 }
