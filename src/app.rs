@@ -206,10 +206,7 @@ impl App {
 
         match self.api_client.register(&username, &password).await {
             Ok(_) => {
-                let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client).await;
-                self.main_window.chat_manager.add_chats(chats);
-                self.main_window.chat_manager.add_messages(messages);
-
+                storage::store_username(&username);
                 self.active_window = Windows::Main;
             }
             Err(e) => {
