@@ -94,10 +94,14 @@ impl InputEntity for MainWindow {
                 self.move_cursor_right();
             }
             KeyCode::Up => {
-                self.move_chat_cursor_up();
+                if self.chat_manager.get_loaded_chat().is_none() {
+                    self.move_chat_cursor_up();
+                }
             }
             KeyCode::Down => {
-                self.move_chat_cursor_down();
+                if self.chat_manager.get_loaded_chat().is_none() {
+                    self.move_chat_cursor_down();
+                }
             }
             KeyCode::Esc => {
                 if self.chat_manager.get_loaded_chat().is_some() {
