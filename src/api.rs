@@ -251,7 +251,7 @@ impl Client {
             return Err(data["detail"].to_string());
         }
 
-        serde_json::from_str(&data.to_string()).unwrap()
+        Ok(serde_json::from_str(&data.to_string()).unwrap())
     }
 
     pub async fn receive_message(&mut self) -> Option<schemas::Message> {

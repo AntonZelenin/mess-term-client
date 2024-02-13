@@ -116,6 +116,9 @@ impl App {
                     }
                     window::main::ActiveInputEntity::EnterMessage => {
                         let message_str = helpers::input_to_string(&self.main_window.pop_message_input());
+                        if message_str.is_empty() {
+                            return;
+                        }
                         // todo new chats do not have id.. will it contain None for new chats?
                         let chat = self.main_window.chat_manager.get_selected_chat().unwrap();
                         if chat.id.is_some() {
@@ -228,8 +231,7 @@ impl App {
 
     async fn create_chat(&mut self, chat: NewChatModel) {
         let chat_model = self.api_client.create_chat(chat).await.unwrap();
-        let chat = Chat::from_model(chat_model);
-        self.main_window.chat_manager.add_chat(chat);
+        self.main_window.chat_manager.add_chat(Chat::from_model(chat_model));
     }
 
     async fn load_chats_and_messages(api_client: &mut api::Client) -> (Vec<Chat>, HashMap<ChatId, Vec<Message>>) {
