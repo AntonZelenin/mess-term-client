@@ -8,7 +8,7 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, tungstenite, WebSocketStream};
 use tokio_tungstenite::tungstenite::Error;
 use url::Url;
-use crate::{auth, helpers, schemas};
+use crate::{auth, helpers, schemas, storage};
 use crate::schemas::{NewMessage, RefreshTokenData, RegisterData};
 use crate::chat::{ChatModel, ChatSearchResults, NewChatModel, UserSearchResults};
 use crate::auth::AuthTokens;
@@ -60,7 +60,7 @@ impl Client {
         let mut obj = Self {
             client: reqwest::Client::new(),
             auth_tokens,
-            store_auth_tokens_callback: Box::new(auth::store_auth_tokens),
+            store_auth_tokens_callback: Box::new(storage::store_auth_tokens),
             write_message_ws: None,
             read_message_ws: None,
         };

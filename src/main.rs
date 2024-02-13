@@ -14,16 +14,17 @@ mod chat;
 mod constants;
 mod event;
 mod helpers;
+mod schemas;
+mod storage;
 mod ui;
 mod window;
-pub mod schemas;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let message_rate_limiter = Arc::new(RateLimiter::direct(Quota::per_second(NonZeroU32::new(10).unwrap())));
     let events_rate_limiter = Arc::new(RateLimiter::direct(Quota::per_second(NonZeroU32::new(60).unwrap())));
 
-    let mut app = App::new(api::Client::new(auth::load_auth_tokens()).await).await;
+    let mut app = App::new(api::Client::new(storage::load_auth_tokens()).await).await;
     let mut tui = tui::build_tui();
 
     tui.enter()?;

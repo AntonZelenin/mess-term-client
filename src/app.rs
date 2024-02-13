@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crossterm::event::KeyEvent;
-use crate::{api, helpers, window};
+use crate::{api, helpers, storage, window};
 use crate::schemas::{Message, NewMessage};
 use crate::chat::{Chat, NewChatModel};
 use crate::chat::manager::ChatManager;
@@ -15,7 +15,7 @@ pub struct App {
     active_window: Windows,
     api_client: api::Client,
     should_quit: bool,
-    username: String,
+    username: Option<String>,
 }
 
 impl App {
@@ -23,12 +23,14 @@ impl App {
         mut api_client: api::Client,
     ) -> Self {
         let mut chat_manager = ChatManager::new();
+        let mut username = None;
 
         if api_client.is_authenticated() {
             // contacts = Self::load_contacts(&mut api_client);
             let (chats, messages) = Self::load_chats_and_messages(&mut api_client).await;
             chat_manager.add_chats(chats);
             chat_manager.add_messages(messages);
+            username = Some(get_username());
         }
 
         Self {
@@ -37,7 +39,7 @@ impl App {
             active_window: if !api_client.is_authenticated() { Windows::Login } else { Windows::Main },
             api_client,
             should_quit: false,
-            username: get_username(),
+            username,
         }
     }
 
@@ -125,13 +127,13 @@ impl App {
                             let message = NewMessage {
                                 chat_id: chat.id.unwrap(),
                                 text: message_str,
-                                sender_username: self.username.clone(),
+                                sender_username: self.username.clone().unwrap(),
                             };
                             self.send_message(message).await;
                         } else {
                             let new_chat = NewChatModel {
                                 name: Some(chat.name.clone()),
-                                creator_username: self.username.clone(),
+                                creator_username: self.username.clone().unwrap(),
                                 member_usernames: chat.member_usernames.clone(),
                                 first_message: message_str,
                             };
@@ -166,6 +168,9 @@ impl App {
 
         match self.api_client.login(&username, &password).await {
             Ok(_) => {
+                storage::store_username(&username);
+                self.username = Some(username);
+
                 let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client).await;
                 self.main_window.chat_manager.add_chats(chats);
                 self.main_window.chat_manager.add_messages(messages);
@@ -257,6 +262,5 @@ pub enum Windows {
 }
 
 pub fn get_username() -> String {
-    // todo
-    "anton".to_string()
+    storage::load_username().unwrap()
 }
