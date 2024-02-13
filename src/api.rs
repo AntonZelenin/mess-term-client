@@ -8,17 +8,17 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, tungstenite, WebSocketStream};
 use tokio_tungstenite::tungstenite::Error;
 use url::Url;
-use crate::{auth, helpers, schemas, storage};
+use crate::{helpers, schemas, storage};
 use crate::schemas::{NewMessage, RefreshTokenData, RegisterData};
 use crate::chat::{ChatModel, ChatSearchResults, NewChatModel, UserSearchResults};
 use crate::auth::AuthTokens;
 
-pub const HOST: &str = "localhost:55800";
+pub const HOST: &str = "185.191.177.247:55800";
 // todo https
-pub const AUTH_SERVICE_API_URL: &str = "localhost:55800/api/auth/v1";
-pub const USER_SERVICE_API_URL: &str = "localhost:55800/api/user/v1";
-pub const MESSAGE_SERVICE_API_URL: &str = "localhost:55800/api/message/v1";
-pub const MESSAGE_WEBSOCKET_URL: &str = "ws://localhost:55800/ws/message/v1/messages";
+pub const AUTH_SERVICE_API_URL: &str = "185.191.177.247:55800/api/auth/v1";
+pub const USER_SERVICE_API_URL: &str = "185.191.177.247:55800/api/user/v1";
+pub const MESSAGE_SERVICE_API_URL: &str = "185.191.177.247:55800/api/message/v1";
+pub const MESSAGE_WEBSOCKET_URL: &str = "ws://185.191.177.247:55800/ws/message/v1/messages";
 
 type WriteMessageWs = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 type ReadMessageWs = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;

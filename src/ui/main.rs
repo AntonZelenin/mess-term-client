@@ -1,7 +1,7 @@
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::prelude::{Color, Line, Modifier, Span, Style, Stylize};
-use ratatui::widgets::{Block, Borders, BorderType, List, ListDirection, ListItem, Paragraph};
+use ratatui::widgets::{Block, Borders, BorderType, List, ListDirection, ListItem, Padding, Paragraph, Wrap};
 use crate::schemas::Message;
 use crate::app::App;
 use crate::chat::Chat;
@@ -130,17 +130,26 @@ fn create_main_and_footer(f: &mut Frame) -> (Rect, Rect) {
 fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect) -> List {
     let items: Vec<ListItem> = chats
         .iter()
-        .map(|s| {
-            let name = s.name.clone();
-            let created_at = s.last_message.as_ref().map(|message| message.created_at.to_string()).unwrap_or_else(|| "".to_string());
+        .map(|chat| {
+            // let name = chat.name.clone();
+            // let created_at = chat.last_message.as_ref().map(|message| message.created_at.to_string()).unwrap_or_else(|| "".to_string());
+            // let total_width = chats_area.width as usize;
+            // -2 because 1 cell goes for the border at each side
+            // let space_count = total_width - name.len() - created_at.len() - 2;
+            // let mut formatted_string = format!("{name:<0$}{created_at}", space_count + name.len(), name = name, created_at = created_at);
+
+            let name = chat.name.clone();
+            let unread_count = if chat.number_of_unread_messages > 0 {
+                format!("(+{})", chat.number_of_unread_messages)
+            } else {
+                "".to_string()
+            };
             let total_width = chats_area.width as usize;
             // -2 because 1 cell goes for the border at each side
-            let space_count = total_width - name.len() - created_at.len() - 2;
-            let formatted_string = format!("{name:<0$}yesterday", space_count + name.len(), name = name);
+            let space_count = total_width - name.len() - unread_count.len() - 2;
+            let formatted_string = format!("{name:<0$}{unread_count}", space_count + name.len(), name = name, unread_count = unread_count);
             let message_dt = Line::from(vec![
                 Span::from(formatted_string),
-                " ".into(),
-                created_at.into(),
             ]);
 
             ListItem::new(message_dt)
@@ -194,12 +203,14 @@ fn build_messages(messages: Option<&Vec<Message>>, fg_color: Color) -> List {
 }
 
 fn get_chat_hints<'a>(fg_color: Color) -> Paragraph<'a> {
-    Paragraph::new("Select a chat to start messaging.")
+    Paragraph::new("Use Up/Down arrows to select a chat. Press `Enter` to open the chat. Start typing to search for a user and press `Enter`")
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_type(BorderType::Plain),
+                .border_type(BorderType::Plain)
+                .padding(Padding::new(5, 5, 15, 0)),
         )
         .style(Style::default().fg(fg_color))
         .alignment(Alignment::Center)
+        .wrap(Wrap { trim: true })
 }
