@@ -229,7 +229,7 @@ impl Client {
             .as_mut()
             .expect("Unauthenticated")
             .send(Message::Text(serde_json::to_string(&message).unwrap()));
-        let _ = send_message
+        send_message
             .await
             .expect("Failed to send message");
     }
@@ -251,7 +251,7 @@ impl Client {
             return Err(data["detail"].to_string());
         }
 
-        serde_json::from_str(&data.to_string()).unwrap()
+        Ok(serde_json::from_str(&data.to_string()).unwrap())
     }
 
     pub async fn receive_message(&mut self) -> Option<schemas::Message> {

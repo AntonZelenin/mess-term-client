@@ -18,11 +18,15 @@ impl ChatManager {
         }
     }
 
-    pub fn add_chats(&mut self, chat: Vec<Chat>) {
-        self.chats.extend(chat);
+    pub fn add_chats(&mut self, chats: Vec<Chat>) {
+        for chat in chats.iter() {
+            self.messages.insert(chat.id.clone().expect("Chat id not found"), vec![]);
+        }
+        self.chats.extend(chats);
     }
 
     pub fn add_chat(&mut self, chat: Chat) {
+        self.messages.insert(chat.id.clone().expect("Chat id not found"), vec![]);
         self.chats.push(chat);
     }
 

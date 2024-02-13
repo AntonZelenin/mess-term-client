@@ -26,6 +26,12 @@ pub struct MainWindow {
 }
 
 impl MainWindow {
+    pub fn new(chat_manager: ChatManager) -> Self {
+        Self {
+            chat_manager,
+            ..Default::default()
+        }
+    }
     pub fn get_active_input(&self) -> String {
         match self.active_input_entity {
             ActiveInputEntity::SearchChats => helpers::input_to_string(&self.search_input),
@@ -55,6 +61,7 @@ impl MainWindow {
     pub fn pop_message_input(&mut self) -> TextInput {
         let message = self.message_input.clone();
         self.message_input.clear();
+        self.reset_cursor();
         message
     }
 
@@ -88,10 +95,14 @@ impl InputEntity for MainWindow {
                 self.move_cursor_right();
             }
             KeyCode::Up => {
-                self.move_chat_cursor_up();
+                if self.chat_manager.get_loaded_chat().is_none() {
+                    self.move_chat_cursor_up();
+                }
             }
             KeyCode::Down => {
-                self.move_chat_cursor_down();
+                if self.chat_manager.get_loaded_chat().is_none() {
+                    self.move_chat_cursor_down();
+                }
             }
             KeyCode::Esc => {
                 if self.chat_manager.get_loaded_chat().is_some() {

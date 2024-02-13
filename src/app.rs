@@ -33,11 +33,11 @@ impl App {
 
         Self {
             login_window: LoginWindow::default(),
-            main_window: MainWindow::default(),
+            main_window: MainWindow::new(chat_manager),
             active_window: if !api_client.is_authenticated() { Windows::Login } else { Windows::Main },
             api_client,
             should_quit: false,
-            username: Self::load_username(),
+            username: get_username(),
         }
     }
 
@@ -116,6 +116,9 @@ impl App {
                     }
                     window::main::ActiveInputEntity::EnterMessage => {
                         let message_str = helpers::input_to_string(&self.main_window.pop_message_input());
+                        if message_str.is_empty() {
+                            return;
+                        }
                         // todo new chats do not have id.. will it contain None for new chats?
                         let chat = self.main_window.chat_manager.get_selected_chat().unwrap();
                         if chat.id.is_some() {
@@ -127,7 +130,7 @@ impl App {
                             self.send_message(message).await;
                         } else {
                             let new_chat = NewChatModel {
-                                name: chat.name.clone(),
+                                name: Some(chat.name.clone()),
                                 creator_username: self.username.clone(),
                                 member_usernames: chat.member_usernames.clone(),
                                 first_message: message_str,
@@ -228,8 +231,7 @@ impl App {
 
     async fn create_chat(&mut self, chat: NewChatModel) {
         let chat_model = self.api_client.create_chat(chat).await.unwrap();
-        let chat = Chat::from_model(chat_model);
-        self.main_window.chat_manager.add_chat(chat);
+        self.main_window.chat_manager.add_chat(Chat::from_model(chat_model));
     }
 
     async fn load_chats_and_messages(api_client: &mut api::Client) -> (Vec<Chat>, HashMap<ChatId, Vec<Message>>) {
@@ -247,14 +249,14 @@ impl App {
 
         (chats, messages)
     }
-
-    fn load_username() -> String {
-        // todo
-        "username".to_string()
-    }
 }
 
 pub enum Windows {
     Login,
     Main,
+}
+
+pub fn get_username() -> String {
+    // todo
+    "anton".to_string()
 }
