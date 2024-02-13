@@ -18,6 +18,10 @@ impl ChatManager {
         }
     }
 
+    pub fn has_chat(&self, chat_id: &ChatId) -> bool {
+        self.chats.contains(&chat_id.to_string())
+    }
+
     pub fn add_chats(&mut self, chats: Vec<Chat>) {
         for chat in chats.iter() {
             self.messages.insert(chat.id.clone().expect("Chat id not found"), vec![]);

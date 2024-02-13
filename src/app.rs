@@ -161,6 +161,9 @@ impl App {
         }
 
         if let Some(message) = self.api_client.receive_message().await {
+            if !self.main_window.chat_manager.has_chat(&message.chat_id) {
+                unimplemented!("load this chat first and add it");
+            }
             self.main_window.chat_manager.add_message(message);
         }
     }
@@ -243,15 +246,12 @@ impl App {
 
     async fn create_chat(&mut self, chat: NewChatModel) {
         let chat_model = self.api_client.create_chat(chat).await.unwrap();
-        let mut messages = HashMap::new();
         let chat_id = chat_model.id.clone();
-        messages.insert(chat_id.clone(), chat_model.messages.clone());
 
         // order is important: first clear search, then select chat
         self.main_window.chat_manager.clear_search_results();
         self.main_window.clear_search();
         self.main_window.chat_manager.add_chat(Chat::from_model(chat_model));
-        self.main_window.chat_manager.add_messages(messages);
         self.main_window.chat_manager.select_chat(chat_id.to_string());
         self.main_window.chat_manager.load_chat(chat_id.to_string());
     }
