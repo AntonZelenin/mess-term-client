@@ -61,6 +61,7 @@ impl MainWindow {
     pub fn pop_message_input(&mut self) -> TextInput {
         let message = self.message_input.clone();
         self.message_input.clear();
+        self.reset_cursor();
         message
     }
 

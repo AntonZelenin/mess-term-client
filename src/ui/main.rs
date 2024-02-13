@@ -178,6 +178,7 @@ fn build_messages(messages: Option<&Vec<Message>>, fg_color: Color) -> List {
         messages
             .unwrap()
             .iter()
+            .rev()
             .map(|s| ListItem::new(s.text.clone()))
             .collect()
     } else {

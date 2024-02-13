@@ -37,7 +37,7 @@ impl App {
             active_window: if !api_client.is_authenticated() { Windows::Login } else { Windows::Main },
             api_client,
             should_quit: false,
-            username: Self::load_username(),
+            username: get_username(),
         }
     }
 
@@ -248,11 +248,6 @@ impl App {
         }
 
         (chats, messages)
-    }
-
-    fn load_username() -> String {
-        // todo
-        "username".to_string()
     }
 }
 
