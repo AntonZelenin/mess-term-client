@@ -26,6 +26,12 @@ pub struct MainWindow {
 }
 
 impl MainWindow {
+    pub fn new(chat_manager: ChatManager) -> Self {
+        Self {
+            chat_manager,
+            ..Default::default()
+        }
+    }
     pub fn get_active_input(&self) -> String {
         match self.active_input_entity {
             ActiveInputEntity::SearchChats => helpers::input_to_string(&self.search_input),

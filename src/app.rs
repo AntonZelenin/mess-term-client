@@ -33,7 +33,7 @@ impl App {
 
         Self {
             login_window: LoginWindow::default(),
-            main_window: MainWindow::default(),
+            main_window: MainWindow::new(chat_manager),
             active_window: if !api_client.is_authenticated() { Windows::Login } else { Windows::Main },
             api_client,
             should_quit: false,
@@ -127,7 +127,7 @@ impl App {
                             self.send_message(message).await;
                         } else {
                             let new_chat = NewChatModel {
-                                name: chat.name.clone(),
+                                name: Some(chat.name.clone()),
                                 creator_username: self.username.clone(),
                                 member_usernames: chat.member_usernames.clone(),
                                 first_message: message_str,
@@ -257,4 +257,9 @@ impl App {
 pub enum Windows {
     Login,
     Main,
+}
+
+pub fn get_username() -> String {
+    // todo
+    "anton".to_string()
 }

@@ -24,6 +24,6 @@ pub struct Message {
     pub chat_id: u32,
     pub sender_username: String,
     pub text: String,
-    pub sent_at: f32,
-    pub is_unread: bool,
+    pub created_at: f32,
+    pub is_read: bool,
 }

@@ -132,15 +132,15 @@ fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect) -> List {
         .iter()
         .map(|s| {
             let name = s.name.clone();
-            let sent_at = s.last_message.as_ref().map(|message| message.sent_at.to_string()).unwrap_or_else(|| "".to_string());
+            let created_at = s.last_message.as_ref().map(|message| message.created_at.to_string()).unwrap_or_else(|| "".to_string());
             let total_width = chats_area.width as usize;
             // -2 because 1 cell goes for the border at each side
-            let space_count = total_width - name.len() - sent_at.len() - 2;
+            let space_count = total_width - name.len() - created_at.len() - 2;
             let formatted_string = format!("{name:<0$}yesterday", space_count + name.len(), name = name);
             let message_dt = Line::from(vec![
                 Span::from(formatted_string),
                 " ".into(),
-                sent_at.into(),
+                created_at.into(),
             ]);
 
             ListItem::new(message_dt)
