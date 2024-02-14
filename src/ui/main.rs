@@ -7,6 +7,7 @@ use crate::app::App;
 use crate::chat::Chat;
 use crate::constants::THEME;
 use crate::{helpers, ui};
+use crate::window::main::ActiveInputEntity;
 
 pub fn render_main(app: &mut App, f: &mut Frame) {
     let (main_area, footer_area) = create_main_and_footer(f);
@@ -30,6 +31,7 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
                 .style(Style::default().fg(fg_color))
         );
 
+    let active_input_entity = app.main_window.get_active_input_entity().clone();
     let chats = app.main_window.chat_manager.get_active_chats_mut();
     f.render_widget(search_input, search_area);
     f.render_stateful_widget(
@@ -37,6 +39,7 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
             &chats.items,
             fg_color,
             chats_area,
+            active_input_entity == ActiveInputEntity::SearchChats,
         ),
         chats_area,
         &mut chats.state,
@@ -128,7 +131,7 @@ fn create_main_and_footer(f: &mut Frame) -> (Rect, Rect) {
     (terminal_layout[0], terminal_layout[1])
 }
 
-fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect) -> List {
+fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect, is_active: bool) -> List {
     let items: Vec<ListItem> = chats
         .iter()
         .map(|chat| {
@@ -157,10 +160,15 @@ fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect) -> List {
         })
         .collect();
 
+    let highlight_color = if is_active {
+        THEME.fg
+    } else {
+        Color::DarkGray
+    };
     List::new(items)
         .block(Block::default().title("Чати").borders(Borders::ALL).border_type(BorderType::Plain))
         .style(Style::default().fg(fg_color))
-        .highlight_style(Style::default().bg(THEME.fg).bold().black())
+        .highlight_style(Style::default().bg(highlight_color).bold().black())
         .direction(ListDirection::TopToBottom)
 }
 

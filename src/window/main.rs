@@ -4,7 +4,7 @@ use crate::helpers;
 use crate::helpers::types::TextInput;
 use crate::window::InputEntity;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveInputEntity {
     SearchChats,
     EnterMessage,
