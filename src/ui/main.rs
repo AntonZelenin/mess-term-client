@@ -254,7 +254,7 @@ fn build_messages<'a>(messages: Vec<Message>, fg_color: Color) -> List<'a> {
 }
 
 fn get_chat_hints<'a>(fg_color: Color) -> Paragraph<'a> {
-    Paragraph::new("Використовуйте стрілки вгору/вниз щоб вибрати чат. Натисніть `Enter`, щоб відкрити чат. Почніть вводити текст щоб знайти користувача та натисніть `Enter`")
+    Paragraph::new("Використовуйте стрілки вгору/вниз щоб вибрати чат. Натисніть `Enter`, щоб відкрити чат. Почніть вводити текст щоб знайти користувача та натисніть `Enter`. `Esc` - назад/скинути пошук")
         .block(
             Block::default()
                 .borders(Borders::ALL)
