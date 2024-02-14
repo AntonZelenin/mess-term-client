@@ -7,6 +7,7 @@ use crate::app::App;
 use crate::chat::Chat;
 use crate::constants::THEME;
 use crate::helpers;
+use crate::window::login::LoginActiveInput;
 use crate::window::main::ActiveInputEntity;
 
 pub fn render_main(app: &mut App, f: &mut Frame) {
@@ -47,6 +48,14 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
         chats_area,
         &mut chats.state,
     );
+
+    if app.main_window.get_active_input_entity() == ActiveInputEntity::SearchChats {
+        f.set_cursor(
+            search_area.x + app.main_window.get_cursor_position() as u16 + 1,
+            // Move one line down, from the border to the input line
+            search_area.y + 1,
+        )
+    }
 }
 
 fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
@@ -78,6 +87,14 @@ fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
             message_list_area,
         );
         f.render_widget(message_paragraph, message_input_area);
+
+        if app.main_window.get_active_input_entity() == ActiveInputEntity::EnterMessage {
+        f.set_cursor(
+            message_input_area.x + app.main_window.get_cursor_position() as u16 + 1,
+            // Move one line down, from the border to the input line
+            message_input_area.y + 1,
+        )
+    }
     } else {
         f.render_widget(
             get_chat_hints(fg_color),

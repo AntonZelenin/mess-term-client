@@ -32,6 +32,11 @@ impl MainWindow {
             ..Default::default()
         }
     }
+
+    pub fn get_cursor_position(&self) -> usize {
+        self.cursor_position
+    }
+
     pub fn get_active_input(&self) -> String {
         match self.active_input_entity {
             ActiveInputEntity::SearchChats => helpers::input_to_string(&self.search_input),
