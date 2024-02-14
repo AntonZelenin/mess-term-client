@@ -181,6 +181,7 @@ impl Client {
         }
     }
 
+    // todo delete me
     pub async fn search_chats(&mut self, username: String) -> Result<ChatSearchResults, String> {
         let rp = RequestParams {
             uri: format!("http://{}/chats", MESSAGE_SERVICE_API_URL),

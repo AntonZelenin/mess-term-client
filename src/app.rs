@@ -132,15 +132,17 @@ impl App {
             return;
         }
 
-        let chat_search_results = self.api_client.search_chats(name_like.clone()).await.unwrap();
+        // let chat_search_results = self.api_client.search_chats(name_like.clone()).await.unwrap();
         let user_search_results = self.api_client.search_users(name_like.clone()).await.unwrap();
 
-        let mut chats = chat_search_results
-            .chats
-            .iter()
-            .map(|chat| Chat::from_model(chat.clone()))
-            .collect::<Vec<Chat>>();
 
+        // let mut chats = chat_search_results
+        //     .chats
+        //     .iter()
+        //     .map(|chat| Chat::from_model(chat.clone()))
+        //     .collect::<Vec<Chat>>();
+
+        let mut chats = vec![];
         for user in user_search_results.users {
             chats.push(Chat {
                 internal_id: user.username.clone(),

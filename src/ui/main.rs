@@ -184,7 +184,11 @@ fn build_chats(chats: &[Chat], chats_area: Rect, is_active: bool) -> List {
 fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
     let paragraph = match app.is_authenticated() {
         true => {
-            Paragraph::new("Натисніть `Ctrl-C` щоб закрити застосунок")
+            if app.main_window.get_active_input_entity() == ActiveInputEntity::EnterMessage {
+                Paragraph::new("`Enter` - відправити повідомлення, 'Esc' - закрити чат, `Ctrl-C` - закрити застосунок")
+            } else {
+                Paragraph::new("Натисніть `Ctrl-C` щоб закрити застосунок")
+            }
         }
         false => {
             Paragraph::new("`Enter` - відправити, `Tab` - наступне поле вводу, `Стрілки праворуч/ліворуч` - переключитись між вкладками")
