@@ -45,9 +45,11 @@ impl ChatManager {
     }
 
     pub fn add_message(&mut self, message: Message) {
-        let chat = self.chats.get_mut(&message.chat_id.to_string());
-
-        chat.number_of_unread_messages += if message.is_read { 0 } else { 1 };
+        let loaded_chat = self.get_loaded_chat().clone();
+        if loaded_chat.is_none() || loaded_chat.unwrap().id != message.chat_id.into() {
+            let chat = self.chats.get_mut(&message.chat_id.to_string());
+            chat.number_of_unread_messages += if message.is_read { 0 } else { 1 };
+        }
 
         self.messages.get_mut(&message.chat_id).expect("Chat messages not found").push(message);
     }

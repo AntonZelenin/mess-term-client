@@ -235,6 +235,7 @@ impl App {
         match self.api_client.register(&username, &password).await {
             Ok(_) => {
                 storage::store_username(&username);
+                self.username = Some(username);
                 self.active_window = Windows::Main;
             }
             Err(e) => {

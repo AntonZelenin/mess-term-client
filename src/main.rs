@@ -2,6 +2,7 @@ use std::num::NonZeroU32;
 use std::sync::Arc;
 use anyhow::Result;
 use governor::{Quota, RateLimiter};
+use tokio::time::sleep;
 use crate::app::App;
 use crate::event::Event;
 use crate::ui::tui;
@@ -44,6 +45,9 @@ async fn main() -> Result<()> {
                     Event::Resize(_, _) => {},
                 }
             },
+            else => {
+                sleep(std::time::Duration::from_millis(10)).await;
+            }
         }
     }
 
