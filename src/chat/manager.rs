@@ -52,11 +52,21 @@ impl ChatManager {
         self.messages.get_mut(&message.chat_id).expect("Chat messages not found").push(message);
     }
 
-    pub fn load_chat(&mut self, chat_id: String) {
-        self.loaded_internal_chat_id = Some(chat_id.clone());
+    pub fn load_chat(&mut self, chat_internal_id: String) {
+        self.loaded_internal_chat_id = Some(chat_internal_id.clone());
         let chats = self.get_active_chats_mut();
-        if chats.contains(&chat_id) {
-            let chat = chats.get_mut(&chat_id);
+        if chats.contains(&chat_internal_id) {
+            let chat = chats.get_mut(&chat_internal_id);
+            chat.number_of_unread_messages = 0;
+        }
+    }
+
+    /// This method loads the chat and ignores search results. It's a fast and dirty solution
+    /// because I don't want to spend much time on this right now
+    pub fn load_specifically_chat(&mut self, chat_internal_id: String) {
+        self.loaded_internal_chat_id = Some(chat_internal_id.clone());
+        if self.chats.contains(&chat_internal_id) {
+            let chat = self.chats.get_mut(&chat_internal_id);
             chat.number_of_unread_messages = 0;
         }
     }
@@ -87,6 +97,10 @@ impl ChatManager {
             return Some(chats.get(&chat_id));
         }
         None
+    }
+
+    pub fn get_chat_by_name(&self, name: &str) -> Option<Chat> {
+        self.chats.items.iter().find(|chat| chat.name == name).cloned()
     }
 
     pub fn unload_chat(&mut self) {

@@ -9,8 +9,7 @@ use tokio_tungstenite::{connect_async, MaybeTlsStream, tungstenite, WebSocketStr
 use tokio_tungstenite::tungstenite::Error;
 use url::Url;
 use crate::{helpers, schemas, storage};
-use crate::schemas::{NewMessage, RefreshTokenData, RegisterData};
-use crate::chat::{ChatModel, ChatSearchResults, NewChatModel, UserSearchResults};
+use crate::schemas::{ChatModel, ChatSearchResults, NewChatModel, NewMessage, RefreshTokenData, RegisterData, UserSearchResults};
 use crate::auth::AuthTokens;
 use crate::helpers::types::ChatId;
 

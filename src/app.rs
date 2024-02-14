@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use crossterm::event::KeyEvent;
 use crate::{api, helpers, storage, window};
-use crate::schemas::{Message, NewMessage};
-use crate::chat::{Chat, NewChatModel};
+use crate::schemas::{Message, NewChatModel, NewMessage};
+use crate::chat::Chat;
 use crate::chat::manager::ChatManager;
 use crate::helpers::types::{ChatId, TextInput};
 use crate::window::InputEntity;
@@ -118,11 +118,32 @@ impl App {
     }
 
     async fn open_chat(&mut self, chat: Chat) {
+        let mut chat_id = None;
         if chat.id.is_some() {
             self.api_client.mark_chat_as_read(chat.id.unwrap()).await;
-        }
-        self.main_window.chat_manager.load_chat(chat.internal_id.clone());
+            self.main_window.chat_manager.load_chat(chat.internal_id.to_string());
+            chat_id = Some(chat.id.unwrap().to_string());
+        } else {
+            // when searching for users they are shown as not existing chats
+            // so if there IS a chat with this user, we should use its internal_id
+            // it is a dirty temporary solution
+            if let Some(existing_chat) = self.main_window.chat_manager.get_chat_by_name(&chat.name) {
+                self.main_window.chat_manager.load_specifically_chat(
+                    existing_chat.internal_id.to_string()
+                );
+                self.api_client.mark_chat_as_read(existing_chat.id.unwrap()).await;
+                chat_id = Some(existing_chat.id.unwrap().to_string());
+            } else {
+                self.main_window.chat_manager.load_chat(
+                    chat.internal_id.to_string()
+                );
+            };
+        };
         self.main_window.set_active_input_entity(window::main::ActiveInputEntity::EnterMessage);
+        if let Some(chat_id) = chat_id {
+            self.main_window.chat_manager.clear_search_results();
+            self.main_window.chat_manager.select_chat(chat_id);
+        }
     }
 
     async fn run_search(&mut self) {

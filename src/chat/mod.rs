@@ -1,29 +1,13 @@
 pub mod manager;
 
 use std::cmp::Ordering;
-use serde::{Deserialize, Serialize};
 use crate::app;
-use crate::schemas::Message;
+use crate::schemas::{ChatModel, Message};
 use crate::helpers::types::ChatId;
 use crate::helpers::traits::InternalID;
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ChatModel {
-    pub id: ChatId,
-    pub name: Option<String>,
-    pub member_usernames: Vec<String>,
-    pub messages: Vec<Message>,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct NewChatModel {
-    pub name: Option<String>,
-    pub member_usernames: Vec<String>,
-    pub first_message: String,
-}
-
 // This chat represents both the ChatModel and the NewChatModel
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub struct Chat {
     pub internal_id: String,
     pub id: Option<ChatId>,
@@ -98,19 +82,4 @@ impl Chat {
             number_of_unread_messages: 0,
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct User {
-    pub username: String,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct UserSearchResults {
-    pub users: Vec<User>,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ChatSearchResults {
-    pub chats: Vec<ChatModel>,
 }
