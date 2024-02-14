@@ -57,9 +57,9 @@ fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
             );
 
         let messages = if loaded_chat.id.is_none() {
-            None
+            vec![]
         } else {
-            Some(app.main_window.chat_manager.get_messages(loaded_chat.id.unwrap()))
+            app.main_window.chat_manager.get_messages(loaded_chat.id.unwrap()).clone()
         };
         f.render_widget(
             build_messages(messages, THEME.fg),
@@ -183,22 +183,36 @@ fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
         .alignment(Alignment::Center)
 }
 
-fn build_messages(messages: Option<&Vec<Message>>, fg_color: Color) -> List {
+fn build_messages<'a>(messages: Vec<Message>, fg_color: Color) -> List<'a> {
     let mut items: Vec<ListItem> = vec![];
     let mut sender_username = None;
-    for message in messages.unwrap_or(&vec![]).iter().rev() {
+    for message in messages.iter() {
         if sender_username.is_none() || sender_username.clone().unwrap() != message.sender_username {
             sender_username = Some(message.sender_username.clone());
-            items.push(ListItem::new(format!("{}:", message.sender_username)).style(Style::default().bold().bg(THEME.inactive)));
+            items.push(ListItem::new(""));
+            items.push(
+                ListItem::new(format!(
+                    "{}: {}",
+                    sender_username.clone().unwrap(),
+                    message.text.clone(),
+                ))
+                    .style(Style::default())
+            );
+        } else {
+            let spaces_count = sender_username.as_ref().map_or(0, |name| name.len() + 2);
+            let spaces = " ".repeat(spaces_count);
+            let formatted_message = format!("{}{}", spaces, message.text.clone());
+
+            items.push(ListItem::new(formatted_message));
         }
-        items.push(ListItem::new(message.text.clone()));
     }
-    
+    items.reverse();
+
     List::new(items)
-        .block(Block::default().title("Messages").borders(Borders::ALL))
+        .block(
+            Block::default().title("Messages").borders(Borders::ALL))
         .style(Style::default().fg(fg_color))
         .highlight_style(Style::default().add_modifier(Modifier::BOLD))
-        .highlight_symbol(">")
         .direction(ListDirection::BottomToTop)
 }
 
