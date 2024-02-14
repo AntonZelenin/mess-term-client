@@ -19,6 +19,7 @@ pub fn render_main(app: &mut App, f: &mut Frame) {
 }
 
 fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area: Rect) {
+    let main_color = ui::get_main_color(app);
     let search_input_value = helpers::input_to_string(&app.main_window.get_search_input());
     let search_input = Paragraph::new(search_input_value.as_str())
         .block(
@@ -26,9 +27,9 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
                 .title("Search")
+                .style(Style::default().fg(main_color))
         );
 
-    let main_color = ui::get_main_color(app);
     let chats = app.main_window.chat_manager.get_active_chats_mut();
     f.render_widget(search_input, search_area);
     f.render_stateful_widget(
