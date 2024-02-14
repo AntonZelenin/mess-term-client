@@ -6,7 +6,7 @@ use crate::schemas::Message;
 use crate::app::App;
 use crate::chat::Chat;
 use crate::constants::THEME;
-use crate::{helpers, ui};
+use crate::helpers;
 use crate::window::main::ActiveInputEntity;
 
 pub fn render_main(app: &mut App, f: &mut Frame) {
@@ -20,7 +20,12 @@ pub fn render_main(app: &mut App, f: &mut Frame) {
 }
 
 fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area: Rect) {
-    let fg_color = ui::get_main_color(app);
+    let is_active = app.main_window.get_active_input_entity() == ActiveInputEntity::SearchChats;
+    let fg_color = if is_active {
+        THEME.fg
+    } else {
+        THEME.inactive
+    };
     let search_input_value = helpers::input_to_string(&app.main_window.get_search_input());
     let search_input = Paragraph::new(search_input_value.as_str())
         .block(
@@ -31,15 +36,13 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
                 .style(Style::default().fg(fg_color))
         );
 
-    let active_input_entity = app.main_window.get_active_input_entity().clone();
     let chats = app.main_window.chat_manager.get_active_chats_mut();
     f.render_widget(search_input, search_area);
     f.render_stateful_widget(
         build_chats(
             &chats.items,
-            fg_color,
             chats_area,
-            active_input_entity == ActiveInputEntity::SearchChats,
+            is_active,
         ),
         chats_area,
         &mut chats.state,
@@ -47,6 +50,12 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
 }
 
 fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
+    let is_active = app.main_window.get_active_input_entity() == ActiveInputEntity::EnterMessage;
+    let fg_color = if is_active {
+        THEME.fg
+    } else {
+        THEME.inactive
+    };
     let (message_list_area, message_input_area) = create_message_area(messages_area);
 
     if let Some(loaded_chat) = app.main_window.chat_manager.get_loaded_chat() {
@@ -56,7 +65,7 @@ fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
                 Block::default()
                     .borders(Borders::ALL)
                     .border_type(BorderType::Plain)
-                    .style(Style::default().fg(THEME.fg))
+                    .style(Style::default().fg(fg_color))
             );
 
         let messages = if loaded_chat.id.is_none() {
@@ -65,13 +74,13 @@ fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
             app.main_window.chat_manager.get_messages(loaded_chat.id.unwrap()).clone()
         };
         f.render_widget(
-            build_messages(messages, THEME.fg),
+            build_messages(messages, fg_color),
             message_list_area,
         );
         f.render_widget(message_paragraph, message_input_area);
     } else {
         f.render_widget(
-            get_chat_hints(THEME.fg),
+            get_chat_hints(fg_color),
             messages_area,
         );
     }
@@ -131,7 +140,7 @@ fn create_main_and_footer(f: &mut Frame) -> (Rect, Rect) {
     (terminal_layout[0], terminal_layout[1])
 }
 
-fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect, is_active: bool) -> List {
+fn build_chats(chats: &[Chat], chats_area: Rect, is_active: bool) -> List {
     let items: Vec<ListItem> = chats
         .iter()
         .map(|chat| {
@@ -160,7 +169,7 @@ fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect, is_active: boo
         })
         .collect();
 
-    let highlight_color = if is_active {
+    let fg_color = if is_active {
         THEME.fg
     } else {
         Color::DarkGray
@@ -168,7 +177,7 @@ fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect, is_active: boo
     List::new(items)
         .block(Block::default().title("Чати").borders(Borders::ALL).border_type(BorderType::Plain))
         .style(Style::default().fg(fg_color))
-        .highlight_style(Style::default().bg(highlight_color).bold().black())
+        .highlight_style(Style::default().bg(fg_color).bold().black())
         .direction(ListDirection::TopToBottom)
 }
 
