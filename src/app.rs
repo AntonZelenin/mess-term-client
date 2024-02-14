@@ -83,11 +83,12 @@ impl App {
             Windows::Main => {
                 match self.main_window.get_active_input_entity() {
                     window::main::ActiveInputEntity::SearchChats => {
-                        if let Some(chat) = self.main_window.chat_manager.get_selected_chat() {
-                            self.open_chat(chat).await;
-                        } else {
-                            self.run_search().await;
-                        }
+                        self.run_search().await;
+                    }
+                    window::main::ActiveInputEntity::SelectChat => {
+                        self.open_chat(
+                            self.main_window.chat_manager.get_selected_chat().expect("Cannot open chat without a selected chat")
+                        ).await;
                     }
                     window::main::ActiveInputEntity::EnterMessage => {
                         let message_str = helpers::input_to_string(&self.main_window.pop_message_input());

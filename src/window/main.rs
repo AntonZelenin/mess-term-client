@@ -7,6 +7,7 @@ use crate::window::InputEntity;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveInputEntity {
     SearchChats,
+    SelectChat,
     EnterMessage,
 }
 
@@ -41,6 +42,7 @@ impl MainWindow {
         match self.active_input_entity {
             ActiveInputEntity::SearchChats => helpers::input_to_string(&self.search_input),
             ActiveInputEntity::EnterMessage => helpers::input_to_string(&self.message_input),
+            _ => unreachable!("This function must not be called with with current active input entity")
         }
     }
 
@@ -48,6 +50,7 @@ impl MainWindow {
         match self.active_input_entity {
             ActiveInputEntity::SearchChats => &mut self.search_input,
             ActiveInputEntity::EnterMessage => &mut self.message_input,
+            _ => unreachable!("This function must not be called with with current active input entity")
         }
     }
 
@@ -72,7 +75,9 @@ impl MainWindow {
 
     pub fn set_active_input_entity(&mut self, active_input_entity: ActiveInputEntity) {
         self.active_input_entity = active_input_entity;
-        self.reset_cursor();
+        if active_input_entity != ActiveInputEntity::SelectChat {
+            self.reset_cursor();
+        }
     }
 
     pub fn clear_search(&mut self) {
@@ -93,7 +98,9 @@ impl InputEntity for MainWindow {
     fn process_input(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char(to_insert) => {
-                self.enter_char(to_insert);
+                if self.get_active_input_entity() == ActiveInputEntity::SearchChats || self.get_active_input_entity() == ActiveInputEntity::EnterMessage {
+                    self.enter_char(to_insert);
+                }
             }
             KeyCode::Backspace => {
                 self.delete_char();
@@ -105,23 +112,26 @@ impl InputEntity for MainWindow {
                 self.move_cursor_right();
             }
             KeyCode::Up => {
-                if self.chat_manager.get_loaded_chat().is_none() {
+                if self.get_active_input_entity() != ActiveInputEntity::EnterMessage {
+                    self.set_active_input_entity(ActiveInputEntity::SelectChat);
                     self.move_chat_cursor_up();
                 }
             }
             KeyCode::Down => {
-                if self.chat_manager.get_loaded_chat().is_none() {
+                if self.get_active_input_entity() != ActiveInputEntity::EnterMessage {
+                    self.set_active_input_entity(ActiveInputEntity::SelectChat);
                     self.move_chat_cursor_down();
                 }
             }
             KeyCode::Esc => {
-                if self.chat_manager.get_loaded_chat().is_some() {
+                if self.get_active_input_entity() == ActiveInputEntity::EnterMessage {
                     self.chat_manager.unload_chat();
                     self.message_input.clear();
-                    self.reset_cursor();
-                    self.set_active_input_entity(ActiveInputEntity::SearchChats);
-                } else if self.chat_manager.get_selected_chat().is_some() {
+                    self.set_active_input_entity(ActiveInputEntity::SelectChat);
+                } else if self.get_active_input_entity() == ActiveInputEntity::SelectChat {
                     self.chat_manager.unselect_chat();
+                    self.set_active_input_entity(ActiveInputEntity::SearchChats);
+                    self.reset_cursor();
                 } else {
                     // todo method?
                     self.chat_manager.clear_search_results();
@@ -169,7 +179,7 @@ impl InputEntity for MainWindow {
     }
 
     fn reset_cursor(&mut self) {
-        self.cursor_position = 0;
+        self.cursor_position = self.get_active_input().len();
     }
 
     fn switch_to_next_input(&mut self) {}
