@@ -9,7 +9,7 @@ use crate::window::login::{LoginActiveInput, LoginTabs};
 
 pub fn render_login_register(app: &mut App, f: &mut Frame) {
     let tabs = Tabs::new(
-        ["Login", "Register"]
+        ["Увійти", "Зареєструватися"]
             .iter()
             .map(|t| {
                 Line::from(*t)
@@ -63,7 +63,7 @@ fn render_login(app: &mut App, tabs: Tabs, f: &mut Frame) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Username")
+                .title("Ім'я користувача")
         );
     let password_value = helpers::input_to_string(&app.login_window.password_input);
     let password_input = Paragraph::new(password_value.as_str())
@@ -75,7 +75,7 @@ fn render_login(app: &mut App, tabs: Tabs, f: &mut Frame) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Password")
+                .title("Пароль")
         );
     let error_message = Paragraph::new(app.login_window.login_error_message.as_str())
         .style(Style::default().fg(THEME.error))
@@ -136,7 +136,7 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Username")
+                .title("Ім'я користувача")
         );
     let password_input_value = helpers::input_to_string(&app.login_window.register_password_input);
     let password_input = Paragraph::new(password_input_value.as_str())
@@ -147,7 +147,7 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Password")
+                .title("Пароль")
         );
     let password_confirmation_input_value = helpers::input_to_string(&app.login_window.register_password_confirmation_input);
     let password_confirmation_input = Paragraph::new(password_confirmation_input_value.as_str())
@@ -158,7 +158,7 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Confirm password")
+                .title("Підтвердіть пароль")
         );
     let error_message = Paragraph::new(app.login_window.register_error_message.as_str())
         .style(Style::default().fg(THEME.error))

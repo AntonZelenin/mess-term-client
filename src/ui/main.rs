@@ -26,7 +26,7 @@ fn render_chats_area(app: &mut App, f: &mut Frame, chats_area: Rect, search_area
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Plain)
-                .title("Search")
+                .title("Пошук")
                 .style(Style::default().fg(fg_color))
         );
 
@@ -158,7 +158,7 @@ fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect) -> List {
         .collect();
 
     List::new(items)
-        .block(Block::default().title("Chats").borders(Borders::ALL).border_type(BorderType::Plain))
+        .block(Block::default().title("Чати").borders(Borders::ALL).border_type(BorderType::Plain))
         .style(Style::default().fg(fg_color))
         .highlight_style(Style::default().bg(THEME.fg).bold().black())
         .direction(ListDirection::TopToBottom)
@@ -167,10 +167,10 @@ fn build_chats(chats: &[Chat], fg_color: Color, chats_area: Rect) -> List {
 fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
     let paragraph = match app.is_authenticated() {
         true => {
-            Paragraph::new("Press `Ctrl-C` to quit.")
+            Paragraph::new("Натисніть `Ctrl-C` щоб закрити застосунок")
         }
         false => {
-            Paragraph::new("`Enter` - submit data, `Tab` - switch input, `Left/Right arrow` - switch tabs.")
+            Paragraph::new("`Enter` - відправити, `Tab` - наступне поле вводу, `Стрілки праворуч/ліворуч` - переключитись між вкладками")
         }
     };
 
@@ -210,14 +210,14 @@ fn build_messages<'a>(messages: Vec<Message>, fg_color: Color) -> List<'a> {
 
     List::new(items)
         .block(
-            Block::default().title("Messages").borders(Borders::ALL))
+            Block::default().title("Повідомлення").borders(Borders::ALL))
         .style(Style::default().fg(fg_color))
         .highlight_style(Style::default().add_modifier(Modifier::BOLD))
         .direction(ListDirection::BottomToTop)
 }
 
 fn get_chat_hints<'a>(fg_color: Color) -> Paragraph<'a> {
-    Paragraph::new("Use Up/Down arrows to select a chat. Press `Enter` to open the chat. Start typing to search for a user and press `Enter`")
+    Paragraph::new("Використовуйте стрілки вгору/вниз щоб вибрати чат. Натисніть `Enter`, щоб відкрити чат. Почніть вводити текст щоб знайти користувача та натисніть `Enter`")
         .block(
             Block::default()
                 .borders(Borders::ALL)
