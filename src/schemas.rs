@@ -39,7 +39,7 @@ pub struct Message {
     pub chat_id: u32,
     pub sender_username: String,
     pub text: String,
-    pub created_at: f32,
+    pub created_at: f64,
     pub is_read: bool,
 }
 

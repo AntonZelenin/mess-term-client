@@ -63,7 +63,7 @@ impl Ord for Chat {
 
 impl Chat {
     pub fn from_model(chat_model: ChatModel) -> Self {
-        let last_message = chat_model.messages.last().cloned();
+        let last_message = chat_model.messages.first().cloned();
         let chat_name = if let Some(name) = chat_model.name {
             name
         } else {

@@ -29,14 +29,12 @@ impl<T> StatefulOrderedList<T>
 
     pub fn extend(&mut self, items: Vec<T>) {
         self.items.extend(items);
-        self.items.sort_by(|a, b| b.cmp(a));
-        self.build_indices();
+        self.update_order();
     }
 
     pub fn push(&mut self, item: T) {
         self.items.push(item);
-        self.items.sort_by(|a, b| b.cmp(a));
-        self.build_indices();
+        self.update_order();
     }
 
     pub fn select(&mut self, item_id: &String) {
@@ -89,7 +87,8 @@ impl<T> StatefulOrderedList<T>
         self.items.is_empty()
     }
 
-    fn build_indices(&mut self) {
+    pub fn update_order(&mut self) {
+        self.items.sort_by(|a, b| b.cmp(a));
         self.item_indices.clear();
         for (i, item) in self.items.iter().enumerate() {
             self.item_indices.insert(item.internal_id(), i);

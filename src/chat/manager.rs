@@ -51,9 +51,11 @@ impl ChatManager {
             chat.number_of_unread_messages += if message.is_read { 0 } else { 1 };
         }
 
-        self.messages.get_mut(&message.chat_id).expect("Chat messages not found").push(message);
+        self.messages.get_mut(&message.chat_id).expect("Chat messages not found").push(message.clone());
+        self.chats.get_mut(&message.chat_id.to_string()).last_message = Some(message.clone());
+        self.chats.update_order();
     }
-
+    
     pub fn load_chat(&mut self, chat_internal_id: String) {
         self.loaded_internal_chat_id = Some(chat_internal_id.clone());
         let chats = self.get_active_chats_mut();
