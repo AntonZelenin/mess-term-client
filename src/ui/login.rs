@@ -184,16 +184,16 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
 }
 
 fn create_login_area(r: Rect) -> Rect {
-    let percent_x = 60;
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(1),
+            Constraint::Percentage(15),
             Constraint::Length(12),
             Constraint::Min(1),
         ])
         .split(r);
 
+    let percent_x = 60;
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -205,16 +205,16 @@ fn create_login_area(r: Rect) -> Rect {
 }
 
 fn create_register_area(r: Rect) -> Rect {
-    let percent_x = 60;
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(1),
+            Constraint::Percentage(15),
             Constraint::Length(16),
             Constraint::Min(1),
         ])
         .split(r);
 
+    let percent_x = 60;
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([

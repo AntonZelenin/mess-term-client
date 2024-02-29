@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::prelude::Line;
 use strum::{Display, EnumIter, FromRepr};
 use crate::helpers::types::TextInput;
 use crate::window::InputEntity;
@@ -34,10 +33,6 @@ impl LoginTabs {
         let current_index = *self as usize;
         let next_index = current_index.saturating_add(1);
         Self::from_repr(next_index).unwrap_or(*self)
-    }
-
-    pub(crate) fn title(&self) -> Line<'static> {
-        format!(" {self} ").into()
     }
 }
 
