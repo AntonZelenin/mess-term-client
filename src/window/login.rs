@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent};
+use strum::{Display, EnumIter, FromRepr};
 use crate::helpers::types::TextInput;
 use crate::window::InputEntity;
 
@@ -12,10 +13,27 @@ pub enum LoginActiveInput {
     RegisterPasswordConfirmation,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
 pub enum LoginTabs {
+    #[default]
+    #[strum(to_string = "Увійти")]
     Login,
+    #[strum(to_string = "Зареєструватися")]
     Register,
+}
+
+impl LoginTabs {
+    fn previous(&self) -> Self {
+        let current_index: usize = *self as usize;
+        let previous_index = current_index.saturating_sub(1);
+        Self::from_repr(previous_index).unwrap_or(*self)
+    }
+
+    fn next(&self) -> Self {
+        let current_index = *self as usize;
+        let next_index = current_index.saturating_add(1);
+        Self::from_repr(next_index).unwrap_or(*self)
+    }
 }
 
 // todo why all this in states? Bad place, bad name
@@ -32,7 +50,7 @@ pub struct LoginWindow {
     pub register_error_message: String,
 
     pub active_input_field: LoginActiveInput,
-    pub active_tab: LoginTabs,
+    pub selected_tab: LoginTabs,
     cursor_position: usize,
 
     actual_password_input: TextInput,
@@ -53,7 +71,7 @@ impl Default for LoginWindow {
             register_error_message: String::new(),
 
             active_input_field: LoginActiveInput::Username,
-            active_tab: LoginTabs::Login,
+            selected_tab: LoginTabs::Login,
             cursor_position: 0,
             actual_password_input: TextInput::new(),
             actual_register_password_input: TextInput::new(),
@@ -149,13 +167,13 @@ impl InputEntity for LoginWindow {
     }
 
     fn switch_tabs(&mut self) {
-        match self.active_tab {
+        match self.selected_tab {
             LoginTabs::Login => {
-                self.active_tab = LoginTabs::Register;
+                self.selected_tab = LoginTabs::Register;
                 self.active_input_field = LoginActiveInput::RegisterUsername;
             }
             LoginTabs::Register => {
-                self.active_tab = LoginTabs::Login;
+                self.selected_tab = LoginTabs::Login;
                 self.active_input_field = LoginActiveInput::Username;
             }
         };
@@ -170,7 +188,7 @@ impl LoginWindow {
 
     pub fn get_input_values(&self) -> HashMap<String, TextInput> {
         let mut input_values = HashMap::new();
-        match self.active_tab {
+        match self.selected_tab {
             LoginTabs::Login => {
                 input_values.insert("username".to_string(), self.username_input.clone());
                 input_values.insert("password".to_string(), self.actual_password_input.clone());

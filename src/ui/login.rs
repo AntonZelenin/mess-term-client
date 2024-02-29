@@ -1,27 +1,22 @@
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::prelude::{Line, Style, Stylize};
+use ratatui::prelude::*;
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Tabs};
+use strum::IntoEnumIterator;
 use crate::app::App;
 use crate::constants::THEME;
 use crate::helpers;
 use crate::window::login::{LoginActiveInput, LoginTabs};
 
-pub fn render_login_register(app: &mut App, f: &mut Frame) {
-    let tabs = Tabs::new(
-        ["Увійти", "Зареєструватися"]
-            .iter()
-            .map(|t| {
-                Line::from(*t)
-            })
-            .collect()
-    )
-        .block(Block::default())
-        .select(app.login_window.active_tab as usize)
-        .style(Style::default())
-        .highlight_style(Style::default().bold().black().bg(THEME.active));
 
-    match app.login_window.active_tab {
+pub fn render_login_register(app: &mut App, f: &mut Frame) {
+    let titles = LoginTabs::iter().map(|t| t.to_string());
+    let tabs = Tabs::new(titles)
+        .highlight_style(Style::default().bold().black().bg(THEME.active))
+        .select(app.login_window.selected_tab as usize)
+        ;
+
+    match app.login_window.selected_tab {
         LoginTabs::Login => {
             render_login(app, tabs, f);
         }
@@ -100,7 +95,7 @@ fn render_login(app: &mut App, tabs: Tabs, f: &mut Frame) {
         active_input_area.x + app.login_window.get_cursor_position() as u16 + 1,
         // Move one line down, from the border to the input line
         active_input_area.y + 1,
-    )
+    );
 }
 
 fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
@@ -189,16 +184,16 @@ fn render_register(app: &mut App, tabs: Tabs, f: &mut Frame) {
 }
 
 fn create_login_area(r: Rect) -> Rect {
-    let percent_x = 60;
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(1),
+            Constraint::Percentage(15),
             Constraint::Length(12),
             Constraint::Min(1),
         ])
         .split(r);
 
+    let percent_x = 60;
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -210,16 +205,16 @@ fn create_login_area(r: Rect) -> Rect {
 }
 
 fn create_register_area(r: Rect) -> Rect {
-    let percent_x = 60;
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(1),
+            Constraint::Percentage(15),
             Constraint::Length(16),
             Constraint::Min(1),
         ])
         .split(r);
 
+    let percent_x = 60;
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([

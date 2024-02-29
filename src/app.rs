@@ -71,7 +71,7 @@ impl App {
     pub async fn submit(&mut self) {
         match self.active_window {
             Windows::Login => {
-                match self.login_window.active_tab {
+                match self.login_window.selected_tab {
                     LoginTabs::Login => {
                         self.process_login().await;
                     }
