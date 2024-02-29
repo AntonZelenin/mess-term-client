@@ -1,11 +1,6 @@
 use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
-use ratatui::prelude::{Line, Stylize, Widget};
-use ratatui::style::palette::tailwind;
-use ratatui::symbols;
-use ratatui::widgets::{Block, Borders, Padding, Paragraph};
+use ratatui::prelude::Line;
 use strum::{Display, EnumIter, FromRepr};
 use crate::helpers::types::TextInput;
 use crate::window::InputEntity;
@@ -40,48 +35,9 @@ impl LoginTabs {
         let next_index = current_index.saturating_add(1);
         Self::from_repr(next_index).unwrap_or(*self)
     }
-}
 
-impl Widget for LoginTabs {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        match self {
-            LoginTabs::Login => self.render_login(area, buf),
-            LoginTabs::Register => self.render_register(area, buf),
-        }
-    }
-}
-
-impl LoginTabs {
     pub(crate) fn title(&self) -> Line<'static> {
-        format!("  {self}  ")
-            .fg(tailwind::SLATE.c200)
-            .bg(self.palette().c900)
-            .into()
-    }
-
-    fn render_login(&self, area: Rect, buf: &mut Buffer) {
-    }
-
-    fn render_register(&self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Welcome to the Ratatui tabs example!")
-            .block(self.block())
-            .render(area, buf)
-    }
-
-    /// A block surrounding the tab's content
-    fn block(&self) -> Block<'static> {
-        Block::default()
-            .borders(Borders::ALL)
-            .border_set(symbols::border::PROPORTIONAL_TALL)
-            .padding(Padding::horizontal(1))
-            .border_style(self.palette().c700)
-    }
-
-    fn palette(&self) -> tailwind::Palette {
-        match self {
-            LoginTabs::Login => tailwind::BLUE,
-            LoginTabs::Register => tailwind::EMERALD,
-        }
+        format!(" {self} ").into()
     }
 }
 

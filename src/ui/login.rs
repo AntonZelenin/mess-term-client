@@ -9,15 +9,12 @@ use crate::helpers;
 use crate::window::login::{LoginActiveInput, LoginTabs};
 
 
-
 pub fn render_login_register(app: &mut App, f: &mut Frame) {
-    let titles = LoginTabs::iter().map(|tab| tab.title());
+    let titles = LoginTabs::iter().map(|t| t.to_string());
     let tabs = Tabs::new(titles)
         .highlight_style(Style::default().bold().black().bg(THEME.active))
         .select(app.login_window.selected_tab as usize)
-        .padding("", "")
-        .divider(" ")
-    ;
+        ;
 
     match app.login_window.selected_tab {
         LoginTabs::Login => {
