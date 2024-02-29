@@ -1,5 +1,12 @@
 use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
+use ratatui::prelude::{Line, Stylize, Widget};
+use ratatui::style::palette::tailwind;
+use ratatui::symbols;
+use ratatui::widgets::{Block, Borders, Padding, Paragraph};
+use strum::{Display, EnumIter, FromRepr};
 use crate::helpers::types::TextInput;
 use crate::window::InputEntity;
 
@@ -12,10 +19,70 @@ pub enum LoginActiveInput {
     RegisterPasswordConfirmation,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
 pub enum LoginTabs {
+    #[default]
+    #[strum(to_string = "Увійти")]
     Login,
+    #[strum(to_string = "Зареєструватися")]
     Register,
+}
+
+impl LoginTabs {
+    fn previous(&self) -> Self {
+        let current_index: usize = *self as usize;
+        let previous_index = current_index.saturating_sub(1);
+        Self::from_repr(previous_index).unwrap_or(*self)
+    }
+
+    fn next(&self) -> Self {
+        let current_index = *self as usize;
+        let next_index = current_index.saturating_add(1);
+        Self::from_repr(next_index).unwrap_or(*self)
+    }
+}
+
+impl Widget for LoginTabs {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        match self {
+            LoginTabs::Login => self.render_login(area, buf),
+            LoginTabs::Register => self.render_register(area, buf),
+        }
+    }
+}
+
+impl LoginTabs {
+    pub(crate) fn title(&self) -> Line<'static> {
+        format!("  {self}  ")
+            .fg(tailwind::SLATE.c200)
+            .bg(self.palette().c900)
+            .into()
+    }
+
+    fn render_login(&self, area: Rect, buf: &mut Buffer) {
+    }
+
+    fn render_register(&self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new("Welcome to the Ratatui tabs example!")
+            .block(self.block())
+            .render(area, buf)
+    }
+
+    /// A block surrounding the tab's content
+    fn block(&self) -> Block<'static> {
+        Block::default()
+            .borders(Borders::ALL)
+            .border_set(symbols::border::PROPORTIONAL_TALL)
+            .padding(Padding::horizontal(1))
+            .border_style(self.palette().c700)
+    }
+
+    fn palette(&self) -> tailwind::Palette {
+        match self {
+            LoginTabs::Login => tailwind::BLUE,
+            LoginTabs::Register => tailwind::EMERALD,
+        }
+    }
 }
 
 // todo why all this in states? Bad place, bad name
@@ -32,7 +99,7 @@ pub struct LoginWindow {
     pub register_error_message: String,
 
     pub active_input_field: LoginActiveInput,
-    pub active_tab: LoginTabs,
+    pub selected_tab: LoginTabs,
     cursor_position: usize,
 
     actual_password_input: TextInput,
@@ -53,7 +120,7 @@ impl Default for LoginWindow {
             register_error_message: String::new(),
 
             active_input_field: LoginActiveInput::Username,
-            active_tab: LoginTabs::Login,
+            selected_tab: LoginTabs::Login,
             cursor_position: 0,
             actual_password_input: TextInput::new(),
             actual_register_password_input: TextInput::new(),
@@ -149,13 +216,13 @@ impl InputEntity for LoginWindow {
     }
 
     fn switch_tabs(&mut self) {
-        match self.active_tab {
+        match self.selected_tab {
             LoginTabs::Login => {
-                self.active_tab = LoginTabs::Register;
+                self.selected_tab = LoginTabs::Register;
                 self.active_input_field = LoginActiveInput::RegisterUsername;
             }
             LoginTabs::Register => {
-                self.active_tab = LoginTabs::Login;
+                self.selected_tab = LoginTabs::Login;
                 self.active_input_field = LoginActiveInput::Username;
             }
         };
@@ -170,7 +237,7 @@ impl LoginWindow {
 
     pub fn get_input_values(&self) -> HashMap<String, TextInput> {
         let mut input_values = HashMap::new();
-        match self.active_tab {
+        match self.selected_tab {
             LoginTabs::Login => {
                 input_values.insert("username".to_string(), self.username_input.clone());
                 input_values.insert("password".to_string(), self.actual_password_input.clone());
