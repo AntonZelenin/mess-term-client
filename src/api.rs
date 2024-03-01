@@ -1,3 +1,4 @@
+use std::fmt;
 use futures::{SinkExt, StreamExt};
 use futures::stream::{SplitSink, SplitStream};
 use reqwest::{Response, StatusCode};
@@ -51,6 +52,7 @@ pub struct Client {
     client: reqwest::Client,
     auth_tokens: Option<AuthTokens>,
     store_auth_tokens_callback: Box<dyn Fn(&AuthTokens)>,
+    delete_auth_tokens_callback: Box<dyn Fn()>,
     write_message_ws: Option<WriteMessageWs>,
     read_message_ws: Option<ReadMessageWs>,
 }
@@ -61,6 +63,7 @@ impl Client {
             client: reqwest::Client::new(),
             auth_tokens,
             store_auth_tokens_callback: Box::new(storage::store_auth_tokens),
+            delete_auth_tokens_callback: Box::new(storage::delete_auth_tokens),
             write_message_ws: None,
             read_message_ws: None,
         };
@@ -72,7 +75,11 @@ impl Client {
         obj
     }
 
-    pub async fn login(&mut self, username: &str, password: &str) -> Result<(), String> {
+    pub fn is_authenticated(&self) -> bool {
+        self.auth_tokens.is_some()
+    }
+
+    pub async fn login(&mut self, username: &str, password: &str) -> ApiResult<()> {
         let url = &format!("http://{}/login", AUTH_SERVICE_API_URL);
         let form_params = [
             ("username", username),
@@ -84,14 +91,14 @@ impl Client {
             .form(&form_params)
             .send()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ApiError::RequestError(e.to_string()))?;
 
         let status = res.status();
         let data = res.json::<serde_json::Value>()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ApiError::DataError(e.to_string()))?;
         if !status.is_success() {
-            return Err(data["detail"].as_str().unwrap().to_string());
+            return Err(ApiError::RequestError(data["detail"].as_str().unwrap().to_string()));
         }
 
         let jwt = data["access_token"].to_string();
@@ -110,7 +117,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn register(&mut self, username: &str, password: &str) -> Result<(), String> {
+    pub async fn register(&mut self, username: &str, password: &str) -> ApiResult<()> {
         let url = &format!("http://{}/users", USER_SERVICE_API_URL);
         let register_data = RegisterData {
             username: username.to_string(),
@@ -122,21 +129,23 @@ impl Client {
             .json(&register_data)
             .send()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ApiError::RequestError(e.to_string()))?;
 
         let status = res.status();
         let data = res.json::<serde_json::Value>()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ApiError::DataError(e.to_string()))?;
         if !status.is_success() {
             let errors = data["errors"].as_object().unwrap();
             return Err(
-                errors
-                    .values()
-                    .filter_map(|v| v.as_str())
-                    .map(|v| v.to_owned())
-                    .collect::<Vec<String>>()
-                    .join("\n")
+                ApiError::RequestError(
+                    errors
+                        .values()
+                        .filter_map(|v| v.as_str())
+                        .map(|v| v.to_owned())
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                )
             );
         }
 
@@ -156,11 +165,7 @@ impl Client {
         Ok(())
     }
 
-    pub fn is_authenticated(&self) -> bool {
-        self.auth_tokens.is_some()
-    }
-
-    pub async fn get_chats(&mut self) -> Result<ChatSearchResults, String> {
+    pub async fn get_chats(&mut self) -> ApiResult<ChatSearchResults> {
         let rp = RequestParams {
             uri: format!("http://{}/chats", MESSAGE_SERVICE_API_URL),
             ..Default::default()
@@ -169,58 +174,28 @@ impl Client {
             Ok(res) => {
                 let data = res.json::<serde_json::Value>()
                     .await
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|e| ApiError::DataError(e.to_string()))?;
                 let chats: ChatSearchResults = serde_json::from_str(&data.to_string()).unwrap();
                 Ok(chats)
             }
             Err(e) => {
-                // todo logger.error(e);
                 Err(e)
             }
         }
     }
 
-    // todo delete me
-    pub async fn search_chats(&mut self, username: String) -> Result<ChatSearchResults, String> {
-        let rp = RequestParams {
-            uri: format!("http://{}/chats", MESSAGE_SERVICE_API_URL),
-            query_params: vec![("username".parse().unwrap(), username)],
-            ..Default::default()
-        };
-        match self.get(rp).await {
-            Ok(res) => {
-                let data = res.json::<serde_json::Value>()
-                    .await
-                    .map_err(|e| e.to_string())?;
-                // todo all these things must be done using derive serialize
-                let users: ChatSearchResults = serde_json::from_str(&data.to_string()).unwrap();
-                Ok(users)
-            }
-            Err(e) => {
-                // todo logger.error(e);
-                Err(e)
-            }
-        }
-    }
-
-    pub async fn get_chat(&mut self, chat_id: ChatId) -> Result<ChatModel, String> {
+    pub async fn get_chat(&mut self, chat_id: ChatId) -> ApiResult<ChatModel> {
         let rp = RequestParams {
             uri: format!("http://{}/chats/{}", MESSAGE_SERVICE_API_URL, chat_id),
             ..Default::default()
         };
-        match self.get(rp).await {
-            Ok(res) => {
-                let data = res.json::<serde_json::Value>()
-                    .await
-                    .map_err(|e| e.to_string())
-                    .expect("Failed to parse response");
-                Ok(serde_json::from_str(&data.to_string()).unwrap())
-            }
-            Err(e) => {
-                // todo logger.error(e);
-                Err(e)
-            }
-        }
+        let res = self.get(rp).await?;
+        let data = res.json::<serde_json::Value>()
+            .await
+            .map_err(|e| e.to_string())
+            .expect("Failed to parse response");
+
+        Ok(serde_json::from_str(&data.to_string()).unwrap())
     }
 
     pub async fn mark_chat_as_read(&mut self, chat_id: ChatId) {
@@ -228,28 +203,25 @@ impl Client {
             uri: format!("http://{}/chats/{}/read", MESSAGE_SERVICE_API_URL, chat_id),
             ..Default::default()
         };
-        self.post(rp).await.unwrap();
+        match self.post(rp).await {
+            Ok(_) => {}
+            Err(_) => {}
+        }
     }
 
-    pub async fn search_users(&mut self, username: String) -> Result<UserSearchResults, String> {
+    pub async fn search_users(&mut self, username: String) -> ApiResult<UserSearchResults> {
         let rp = RequestParams {
             uri: format!("http://{}/users", USER_SERVICE_API_URL),
             query_params: vec![("username".parse().unwrap(), username)],
             ..Default::default()
         };
-        match self.get(rp).await {
-            Ok(res) => {
-                let data = res.json::<serde_json::Value>()
-                    .await
-                    .map_err(|e| e.to_string())?;
-                let users: UserSearchResults = serde_json::from_str(&data.to_string()).unwrap();
-                Ok(users)
-            }
-            Err(e) => {
-                // todo logger.error(e);
-                Err(e)
-            }
-        }
+        let res = self.get(rp).await?;
+        let data = res.json::<serde_json::Value>()
+            .await
+            .map_err(|e| ApiError::DataError(e.to_string()))?;
+        let users: UserSearchResults = serde_json::from_str(&data.to_string()).unwrap();
+
+        Ok(users)
     }
 
     pub async fn send_message(&mut self, message: NewMessage) {
@@ -263,21 +235,20 @@ impl Client {
             .expect("Failed to send message");
     }
 
-    pub async fn create_chat(&mut self, chat: NewChatModel) -> Result<ChatModel, String> {
+    pub async fn create_chat(&mut self, chat: NewChatModel) -> ApiResult<ChatModel> {
         let rp = RequestParams {
             uri: format!("http://{}/chats", MESSAGE_SERVICE_API_URL),
             body: Some(serde_json::to_value(&chat).unwrap()),
             ..Default::default()
         };
-        let res = self.post(rp).await.unwrap();
-
+        let res = self.post(rp).await?;
         let status = res.status();
         let data = res.json::<serde_json::Value>()
             .await
             .map_err(|e| e.to_string())
             .expect("Failed to parse response");
         if !status.is_success() {
-            return Err(data["detail"].to_string());
+            return Err(ApiError::RequestError(data["detail"].to_string()));
         }
 
         Ok(serde_json::from_str(&data.to_string()).unwrap())
@@ -315,9 +286,9 @@ impl Client {
         None
     }
 
-    async fn post(&mut self, mut rp: RequestParams) -> Result<Response, String> {
+    async fn post(&mut self, mut rp: RequestParams) -> ApiResult<Response> {
         loop {
-            let url = Url::parse_with_params(&rp.uri, rp.query_params.clone()).map_err(|e| e.to_string())?;
+            let url = Url::parse_with_params(&rp.uri, rp.query_params.clone()).unwrap();
             let res = self.
                 client
                 .post(url)
@@ -325,17 +296,22 @@ impl Client {
                 .json(&rp.body)
                 .send()
                 .await
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| ApiError::RequestError(e.to_string()))?;
 
             if self.should_refresh_tokens(&mut rp, &res) {
-                self.refresh_token(&mut rp).await.expect("Failed to refresh token");
-                continue;
+                match self.refresh_tokens(&mut rp).await {
+                    Ok(_) => continue,
+                    Err(e) => {
+                        self.unauthenticate();
+                        return Err(e);
+                    }
+                }
             }
             if !res.status().is_success() {
                 let data = res.json::<serde_json::Value>()
                     .await
-                    .map_err(|e| e.to_string())?;
-                return Err(data["detail"].to_string());
+                    .map_err(|e| ApiError::DataError(e.to_string()))?;
+                return Err(ApiError::RequestError(data["detail"].to_string()));
             }
 
             return Ok(res);
@@ -346,33 +322,40 @@ impl Client {
         res.status() == StatusCode::UNAUTHORIZED && rp.can_reauthenticate && self.auth_tokens.is_some()
     }
 
-    async fn get(&mut self, mut rp: RequestParams) -> Result<Response, String> {
-        let url = Url::parse_with_params(&rp.uri, rp.query_params.clone()).map_err(|e| e.to_string())?;
-        let res = self.
-            client
-            .get(url)
-            .header("Authorization", self.get_authorization_header())
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        if self.should_refresh_tokens(&mut rp, &res) {
-            self.refresh_token(&mut rp).await.expect("Failed to refresh token");
-            return self.post(rp).await;
-        }
-        if !res.status().is_success() {
-            let data = res.json::<serde_json::Value>()
+    async fn get(&mut self, mut rp: RequestParams) -> ApiResult<Response> {
+        loop {
+            let url = Url::parse_with_params(&rp.uri, rp.query_params.clone()).unwrap();
+            let res = self.
+                client
+                .get(url)
+                .header("Authorization", self.get_authorization_header())
+                .send()
                 .await
-                .map_err(|e| e.to_string())?;
-            return Err(data["detail"].to_string());
-        }
+                .map_err(|e| ApiError::RequestError(e.to_string()))?;
 
-        Ok(res)
+            if self.should_refresh_tokens(&mut rp, &res) {
+                match self.refresh_tokens(&mut rp).await {
+                    Ok(_) => continue,
+                    Err(_) => {
+                        self.unauthenticate();
+                        return Err(ApiError::Unauthenticated);
+                    }
+                }
+            }
+            if !res.status().is_success() {
+                let data = res.json::<serde_json::Value>()
+                    .await
+                    .map_err(|e| ApiError::DataError(e.to_string()))?;
+                return Err(ApiError::RequestError(data["detail"].to_string()));
+            }
+
+            return Ok(res);
+        }
     }
 
-    async fn refresh_token(&mut self, rp: &mut RequestParams) -> Result<(), String> {
+    async fn refresh_tokens(&mut self, rp: &mut RequestParams) -> ApiResult<()> {
         if !rp.can_reauthenticate {
-            return Err("Cannot reauthenticate".to_string());
+            panic!("Cannot reauthenticate");
         }
         rp.set_cant_reauthenticate();
 
@@ -385,14 +368,17 @@ impl Client {
             .json(&refresh_token_data)
             .send()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ApiError::RequestError(e.to_string()))?;
 
         let status = res.status();
         let data = res.json::<serde_json::Value>()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ApiError::DataError(e.to_string()))?;
         if !status.is_success() {
-            return Err(data["detail"].to_string());
+            if status == StatusCode::UNAUTHORIZED {
+                return Err(ApiError::Unauthenticated);
+            }
+            return Err(ApiError::RequestError(data["detail"].to_string()));
         }
 
         // todo duplicate code, same thing in login
@@ -431,8 +417,13 @@ impl Client {
                 Err(Error::Http(response)) => {
                     if response.status() == tungstenite::http::StatusCode::UNAUTHORIZED && rp.can_reauthenticate {
                         if self.auth_tokens.is_some() {
-                            self.refresh_token(&mut rp).await.expect("Failed to refresh token");
-                            continue;
+                            match self.refresh_tokens(&mut rp).await {
+                                Ok(_) => continue,
+                                Err(_) => {
+                                    self.unauthenticate();
+                                    return;
+                                }
+                            }
                         } else {
                             panic!("Can't connect to ws: Unauthenticated");
                         }
@@ -450,8 +441,32 @@ impl Client {
         self.auth_tokens = Some(tokens.clone());
         (self.store_auth_tokens_callback)(&tokens);
     }
+    
+    fn unauthenticate(&mut self) {
+        self.auth_tokens = None;
+        (self.delete_auth_tokens_callback)();
+    }
 
     fn get_authorization_header(&mut self) -> String {
         format!("Bearer {}", self.auth_tokens.as_ref().expect("Unauthenticated").token)
+    }
+}
+
+type ApiResult<T> = Result<T, ApiError>;
+
+#[derive(Debug, Clone)]
+pub enum ApiError {
+    Unauthenticated,
+    RequestError(String),
+    DataError(String),
+}
+
+impl fmt::Display for ApiError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ApiError::Unauthenticated => write!(f, "Unauthenticated"),
+            ApiError::RequestError(e) => write!(f, "Request error: {}", e),
+            ApiError::DataError(e) => write!(f, "Data error: {}", e),
+        }
     }
 }
