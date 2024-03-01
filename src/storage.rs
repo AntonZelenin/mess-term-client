@@ -60,6 +60,21 @@ pub fn load_username() -> Option<String> {
     Some(username)
 }
 
+pub fn delete_auth_tokens() {
+    let token_file_path = get_token_file_path();
+    let refresh_token_file_path = get_refresh_token_file_path();
+
+    if Path::new(&token_file_path).exists() {
+        fs::remove_file(token_file_path)
+            .expect("Failed to delete the token file");
+    }
+
+    if Path::new(&refresh_token_file_path).exists() {
+        fs::remove_file(refresh_token_file_path)
+            .expect("Failed to delete the refresh token file");
+    }
+}
+
 fn get_token_file_path() -> PathBuf {
     // todo it's temporary, I think I'll store it in a more secure way
     get_credentials_dir().join("mess_jwt.txt")

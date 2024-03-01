@@ -52,6 +52,7 @@ pub struct Client {
     client: reqwest::Client,
     auth_tokens: Option<AuthTokens>,
     store_auth_tokens_callback: Box<dyn Fn(&AuthTokens)>,
+    delete_auth_tokens_callback: Box<dyn Fn()>,
     write_message_ws: Option<WriteMessageWs>,
     read_message_ws: Option<ReadMessageWs>,
 }
@@ -62,6 +63,7 @@ impl Client {
             client: reqwest::Client::new(),
             auth_tokens,
             store_auth_tokens_callback: Box::new(storage::store_auth_tokens),
+            delete_auth_tokens_callback: Box::new(storage::delete_auth_tokens),
             write_message_ws: None,
             read_message_ws: None,
         };
@@ -300,7 +302,7 @@ impl Client {
                 match self.refresh_tokens(&mut rp).await {
                     Ok(_) => continue,
                     Err(e) => {
-                        self.auth_tokens = None;
+                        self.unauthenticate();
                         return Err(e);
                     }
                 }
@@ -335,7 +337,7 @@ impl Client {
                 match self.refresh_tokens(&mut rp).await {
                     Ok(_) => continue,
                     Err(_) => {
-                        self.auth_tokens = None;
+                        self.unauthenticate();
                         return Err(ApiError::Unauthenticated);
                     }
                 }
@@ -418,7 +420,7 @@ impl Client {
                             match self.refresh_tokens(&mut rp).await {
                                 Ok(_) => continue,
                                 Err(_) => {
-                                    self.auth_tokens = None;
+                                    self.unauthenticate();
                                     return;
                                 }
                             }
@@ -438,6 +440,11 @@ impl Client {
     fn set_auth_tokens(&mut self, tokens: AuthTokens) {
         self.auth_tokens = Some(tokens.clone());
         (self.store_auth_tokens_callback)(&tokens);
+    }
+    
+    fn unauthenticate(&mut self) {
+        self.auth_tokens = None;
+        (self.delete_auth_tokens_callback)();
     }
 
     fn get_authorization_header(&mut self) -> String {
