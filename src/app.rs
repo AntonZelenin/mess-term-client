@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use crossterm::event::KeyEvent;
 use crate::{api, helpers, storage, window};
+use crate::api::ApiError;
 use crate::schemas::{Message, NewChatModel, NewMessage};
 use crate::chat::Chat;
 use crate::chat::manager::ChatManager;
@@ -154,29 +155,25 @@ impl App {
             return;
         }
 
-        // let chat_search_results = self.api_client.search_chats(name_like.clone()).await.unwrap();
-        let user_search_results = self.api_client.search_users(name_like.clone()).await.unwrap();
+        match self.api_client.search_users(name_like.clone()).await {
+            Ok(user_search_results) => {
+                let mut chats = vec![];
+                for user in user_search_results.users {
+                    chats.push(Chat {
+                        internal_id: user.username.clone(),
+                        id: None,
+                        name: user.username.clone(),
+                        member_usernames: vec![user.username.clone(), get_username()],
+                        last_message: None,
+                        number_of_unread_messages: 0,
+                    });
+                }
 
-
-        // let mut chats = chat_search_results
-        //     .chats
-        //     .iter()
-        //     .map(|chat| Chat::from_model(chat.clone()))
-        //     .collect::<Vec<Chat>>();
-
-        let mut chats = vec![];
-        for user in user_search_results.users {
-            chats.push(Chat {
-                internal_id: user.username.clone(),
-                id: None,
-                name: user.username.clone(),
-                member_usernames: vec![user.username.clone(), get_username()],
-                last_message: None,
-                number_of_unread_messages: 0,
-            });
+                self.main_window.chat_manager.set_search_results(chats);
+            }
+            Err(ApiError::Unauthenticated) => return,
+            Err(e) => panic!("Error while searching for users: {:?}", e),
         }
-
-        self.main_window.chat_manager.set_search_results(chats);
     }
 
     pub async fn receive_message(&mut self) {
@@ -186,8 +183,15 @@ impl App {
 
         if let Some(message) = self.api_client.receive_message().await {
             if !self.main_window.chat_manager.has_chat(&message.chat_id) {
-                let chat = self.api_client.get_chat(message.chat_id).await.unwrap();
-                self.main_window.chat_manager.add_chat(Chat::from_model(chat));
+                match self.api_client.get_chat(message.chat_id).await {
+                    Ok(chat) => {
+                        self.main_window.chat_manager.add_chat(Chat::from_model(chat));
+                    }
+                    Err(ApiError::Unauthenticated) => {
+                        return;
+                    }
+                    Err(e) => panic!("Error while loading chat: {:?}", e),
+                }
             }
             self.main_window.chat_manager.add_message(message);
         }
@@ -216,7 +220,7 @@ impl App {
                 self.active_window = Windows::Main;
             }
             Err(e) => {
-                self.login_window.login_error_message = e;
+                self.login_window.login_error_message = e.to_string();
             }
         }
     }
@@ -239,7 +243,7 @@ impl App {
                 self.active_window = Windows::Main;
             }
             Err(e) => {
-                self.login_window.register_error_message = e;
+                self.login_window.register_error_message = e.to_string();
             }
         }
     }
@@ -271,31 +275,42 @@ impl App {
     }
 
     async fn create_chat(&mut self, chat: NewChatModel) {
-        let chat_model = self.api_client.create_chat(chat).await.unwrap();
-        let chat_id = chat_model.id.clone();
+        match self.api_client.create_chat(chat).await {
+            Ok(chat_model) => {
+                let chat_id = chat_model.id.clone();
 
-        // order is important: first clear search, then select chat
-        self.main_window.chat_manager.clear_search_results();
-        self.main_window.clear_search();
-        self.main_window.chat_manager.add_chat(Chat::from_model(chat_model));
-        self.main_window.chat_manager.select_chat(chat_id.to_string());
-        self.main_window.chat_manager.load_chat(chat_id.to_string());
+                // order is important: first clear search, then select chat
+                self.main_window.chat_manager.clear_search_results();
+                self.main_window.clear_search();
+                self.main_window.chat_manager.add_chat(Chat::from_model(chat_model));
+                self.main_window.chat_manager.select_chat(chat_id.to_string());
+                self.main_window.chat_manager.load_chat(chat_id.to_string());
+            }
+            Err(ApiError::Unauthenticated) => return,
+            Err(e) => panic!("Error while creating chat: {:?}", e),
+        }
     }
 
     async fn load_chats_and_messages(api_client: &mut api::Client) -> (Vec<Chat>, HashMap<ChatId, Vec<Message>>) {
-        let chat_results = api_client.get_chats().await.unwrap();
+        match api_client.get_chats().await {
+            Ok(chat_results) => {
+                let mut messages = HashMap::new();
+                for chat in chat_results.chats.iter() {
+                    messages.insert(chat.id, chat.messages.clone());
+                }
+                let mut chats = Vec::new();
+                for chat_model in chat_results.chats {
+                    let chat = Chat::from_model(chat_model);
+                    chats.push(chat);
+                }
 
-        let mut messages = HashMap::new();
-        for chat in chat_results.chats.iter() {
-            messages.insert(chat.id, chat.messages.clone());
+                (chats, messages)
+            }
+            Err(ApiError::Unauthenticated) => {
+                (vec![], HashMap::new())
+            }
+            Err(e) => panic!("Error while loading chats: {:?}", e),
         }
-        let mut chats = Vec::new();
-        for chat_model in chat_results.chats {
-            let chat = Chat::from_model(chat_model);
-            chats.push(chat);
-        }
-
-        (chats, messages)
     }
 }
 
