@@ -82,7 +82,7 @@ fn render_message_area(app: &App, f: &mut Frame, messages_area: Rect) {
             app.main_window.chat_manager.get_messages(loaded_chat.id.unwrap()).clone()
         };
         f.render_widget(
-            build_messages(messages, fg_color),
+            build_messages(messages, fg_color, &message_list_area),
             message_list_area,
         );
         f.render_widget(message_paragraph, message_input_area);
@@ -220,29 +220,39 @@ fn get_app_hints<'a>(app: &App) -> Paragraph<'a> {
         .alignment(Alignment::Center)
 }
 
-fn build_messages<'a>(messages: Vec<Message>, fg_color: Color) -> List<'a> {
+fn build_messages<'a>(messages: Vec<Message>, fg_color: Color, area: &Rect) -> List<'a> {
     let mut items: Vec<ListItem> = vec![];
     let mut sender_username = None;
+
     for message in messages.iter() {
         if sender_username.is_none() || sender_username.clone().unwrap() != message.sender_username {
             sender_username = Some(message.sender_username.clone());
-            items.push(ListItem::new(""));
-            items.push(
-                ListItem::new(format!(
-                    "{}: {}",
-                    sender_username.clone().unwrap(),
-                    message.text.clone(),
-                ))
-                    .style(Style::default())
+            let s = &format!(
+                "{}: {}",
+                sender_username.clone().unwrap(),
+                message.text.clone(),
             );
-        } else {
-            let spaces_count = sender_username.as_ref().map_or(0, |name| name.len() + 2);
-            let spaces = " ".repeat(spaces_count);
-            let formatted_message = format!("{}{}", spaces, message.text.clone());
+            let wrapped_strings = textwrap::wrap(s, area.width as usize);
 
-            items.push(ListItem::new(formatted_message));
+            items.push(ListItem::new(""));
+            let mut is_first = true;
+            for string in wrapped_strings {
+                if is_first {
+                    items.push(ListItem::new(string.to_string()));
+                    is_first = false;
+                } else {
+                    items.push(ListItem::new(format_with_spaces(&mut sender_username, string.to_string())));
+                }
+            }
+        } else {
+            let s = message.text.clone();
+            let wrapped_strings = textwrap::wrap(&s, area.width as usize);
+            for string in wrapped_strings {
+                items.push(ListItem::new(format_with_spaces(&mut sender_username, string.to_string())));
+            }
         }
     }
+
     items.reverse();
 
     List::new(items)
@@ -251,6 +261,12 @@ fn build_messages<'a>(messages: Vec<Message>, fg_color: Color) -> List<'a> {
         .style(Style::default().fg(fg_color))
         .highlight_style(Style::default().add_modifier(Modifier::BOLD))
         .direction(ListDirection::BottomToTop)
+}
+
+fn format_with_spaces(sender_username: &Option<String>, message_text: String) -> String {
+    let spaces_count = sender_username.as_ref().map_or(0, |name| name.len() + 2);
+    let spaces = " ".repeat(spaces_count);
+    format!("{}{}", spaces, message_text)
 }
 
 fn get_chat_hints<'a>(fg_color: Color) -> Paragraph<'a> {
