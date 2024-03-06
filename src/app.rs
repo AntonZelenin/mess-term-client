@@ -318,6 +318,10 @@ impl App {
     }
 
     async fn save_new_users_data(api_client: &mut api::Client, chat_builder: &mut ChatBuilder, chat_models: &Vec<ChatModel>) {
+        if chat_models.is_empty() {
+            return;
+        }
+        
         let user_ids = extract_user_ids(chat_models);
         if user_ids.is_empty() {
             panic!("No user ids found in chat model");
