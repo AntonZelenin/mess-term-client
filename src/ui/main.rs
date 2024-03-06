@@ -225,8 +225,8 @@ fn build_messages<'a>(messages: Vec<Message>, fg_color: Color, area: &Rect) -> L
     let mut sender_username = None;
 
     for message in messages.iter() {
-        if sender_username.is_none() || sender_username.clone().unwrap() != message.sender_username {
-            sender_username = Some(message.sender_username.clone());
+        if sender_username.is_none() || sender_username.clone().unwrap() != message.sender_id {
+            sender_username = Some(message.sender_id.clone());
             let s = &format!(
                 "{}: {}",
                 sender_username.clone().unwrap(),

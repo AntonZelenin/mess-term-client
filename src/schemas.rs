@@ -16,28 +16,28 @@ pub struct RefreshTokenData {
 pub struct ChatModel {
     pub id: ChatId,
     pub name: Option<String>,
-    pub member_usernames: Vec<String>,
+    pub member_ids: Vec<String>,
     pub messages: Vec<Message>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NewChatModel {
     pub name: Option<String>,
-    pub member_usernames: Vec<String>,
+    pub member_user_ids: Vec<String>,
     pub first_message: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NewMessage {
     pub chat_id: ChatId,
-    pub sender_username: String,
+    pub sender_id: String,
     pub text: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Message {
     pub chat_id: u32,
-    pub sender_username: String,
+    pub sender_id: String,
     pub text: String,
     pub created_at: f64,
     pub is_read: bool,
@@ -45,6 +45,7 @@ pub struct Message {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct User {
+    pub id: String,
     pub username: String,
 }
 
