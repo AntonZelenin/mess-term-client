@@ -2,7 +2,8 @@ pub mod builder;
 pub mod manager;
 
 use std::cmp::Ordering;
-use crate::schemas::{Message, User};
+use serde::{Deserialize, Serialize};
+use crate::schemas::User;
 use crate::helpers::types::ChatId;
 use crate::helpers::traits::InternalID;
 
@@ -59,4 +60,13 @@ impl Ord for Chat {
         }
         Ordering::Equal
     }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Message {
+    pub chat_id: u32,
+    pub sender_username: String,
+    pub text: String,
+    pub created_at: f64,
+    pub is_read: bool,
 }

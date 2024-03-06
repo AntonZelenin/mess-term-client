@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use crate::chat::Chat;
-use crate::helpers::types::UserId;
-use crate::schemas::{ChatModel, User};
+use crate::chat::{Chat, Message};
+use crate::helpers::types::{ChatId, UserId};
+use crate::schemas::{ChatModel, MessageModel, User};
 
 pub struct UserProvider {
     users: HashMap<UserId, User>,
@@ -31,11 +31,17 @@ impl ChatBuilder {
         }
     }
     
-    pub fn build_from_models(&self, chat_models: Vec<ChatModel>) -> Vec<Chat> {
-        chat_models.into_iter().map(|chat_model| self.build_from_model(chat_model)).collect()
+    pub fn add_users(&mut self, user: Vec<User>) {
+        for user in user {
+            self.user_provider.users.insert(user.id.clone(), user);
+        }
+    }
+    
+    pub fn build_chats_from_models(&self, chat_models: Vec<ChatModel>) -> Vec<Chat> {
+        chat_models.into_iter().map(|chat_model| self.build_chat_from_model(chat_model)).collect()
     }
 
-    pub fn build_from_model(&self, chat_model: ChatModel) -> Chat {
+    pub fn build_chat_from_model(&self, chat_model: ChatModel) -> Chat {
         let members = chat_model
             .member_ids
             .iter()
@@ -47,8 +53,27 @@ impl ChatBuilder {
             id: Some(chat_model.id),
             name: self.get_chat_name(&chat_model),
             members,
-            last_message: chat_model.messages.first().cloned(),
+            last_message: chat_model.messages.last().map(|message_model| self.build_message_from_model(message_model.clone())),
             number_of_unread_messages: 0,
+        }
+    }
+
+    pub fn build_messages_from_models(&self, message_models: HashMap<ChatId, Vec<MessageModel>>) -> HashMap<ChatId, Vec<Message>> {
+        message_models
+            .into_iter()
+            .map(|(chat_id, messages)|
+                (chat_id, messages.into_iter().map(|message| self.build_message_from_model(message)).collect())
+            )
+            .collect()
+    }
+
+    pub fn build_message_from_model(&self, message_model: MessageModel) -> Message {
+        Message {
+            chat_id: message_model.chat_id,
+            sender_username: self.user_provider.get_user(&message_model.sender_id).username,
+            text: message_model.text.clone(),
+            created_at: message_model.created_at,
+            is_read: message_model.is_read,
         }
     }
 

@@ -2,9 +2,8 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::prelude::{Color, Line, Modifier, Span, Style, Stylize};
 use ratatui::widgets::{Block, Borders, BorderType, List, ListDirection, ListItem, Padding, Paragraph, Wrap};
-use crate::schemas::Message;
 use crate::app::App;
-use crate::chat::Chat;
+use crate::chat::{Chat, Message};
 use crate::constants::THEME;
 use crate::helpers;
 use crate::window::main::ActiveInputEntity;
@@ -225,8 +224,8 @@ fn build_messages<'a>(messages: Vec<Message>, fg_color: Color, area: &Rect) -> L
     let mut sender_username = None;
 
     for message in messages.iter() {
-        if sender_username.is_none() || sender_username.clone().unwrap() != message.sender_id {
-            sender_username = Some(message.sender_id.clone());
+        if sender_username.is_none() || sender_username.clone().unwrap() != message.sender_username {
+            sender_username = Some(message.sender_username.clone());
             let s = &format!(
                 "{}: {}",
                 sender_username.clone().unwrap(),

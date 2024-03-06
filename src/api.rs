@@ -10,7 +10,7 @@ use tokio_tungstenite::{connect_async, MaybeTlsStream, tungstenite, WebSocketStr
 use tokio_tungstenite::tungstenite::Error;
 use url::Url;
 use crate::{helpers, schemas, storage};
-use crate::schemas::{ChatModel, ChatSearchResults, NewChatModel, NewMessage, RefreshTokenData, RegisterData, UserSearchResults};
+use crate::schemas::*;
 use crate::auth::AuthTokens;
 use crate::helpers::types::{ChatId, UserId};
 
@@ -167,13 +167,13 @@ impl Client {
         Ok(user_id)
     }
 
-    pub async fn get_users(&mut self, user_ids: Vec<UserId>) -> ApiResult<UserSearchResults> {
+    pub async fn get_users_by_ids(&mut self, user_ids: Vec<UserId>) -> ApiResult<UserSearchResults> {
         let rp = RequestParams {
             uri: format!("http://{}/users/batch-query", USER_SERVICE_API_URL),
-            body: Some(serde_json::to_value(&user_ids).unwrap()),
+            body: Some(serde_json::to_value(&GetUsersByIdsRequest { user_ids }).unwrap()),
             ..Default::default()
         };
-        let res = self.get(rp).await?;
+        let res = self.post(rp).await?;
         let data = res.json::<serde_json::Value>()
             .await
             .map_err(|e| ApiError::DataError(e.to_string()))?;
@@ -270,11 +270,11 @@ impl Client {
         Ok(serde_json::from_str(&data.to_string()).unwrap())
     }
 
-    pub async fn receive_message(&mut self) -> Option<schemas::Message> {
+    pub async fn receive_message(&mut self) -> Option<schemas::MessageModel> {
         if let Some(message) = self.read_message_ws.as_mut().expect("Unauthenticated").next().await {
             match message {
                 Ok(Message::Text(text)) => {
-                    match serde_json::from_str::<schemas::Message>(&text) {
+                    match serde_json::from_str::<schemas::MessageModel>(&text) {
                         Ok(parsed_message) => {
                             return Some(parsed_message);
                         }
