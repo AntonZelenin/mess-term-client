@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use crossterm::event::KeyEvent;
-use crate::{api, helpers, storage, window};
+use crate::{api, factory, helpers, storage, window};
 use crate::api::ApiError;
-use crate::schemas::{Message, NewChatModel, NewMessage};
+use crate::chat::builder::ChatBuilder;
+use crate::schemas::{ChatModel, MessageModel, NewChatModel, NewMessage, User};
 use crate::chat::Chat;
 use crate::chat::manager::ChatManager;
 use crate::helpers::types::{ChatId, TextInput};
@@ -13,10 +14,12 @@ use crate::window::main::MainWindow;
 pub struct App {
     pub login_window: LoginWindow,
     pub main_window: MainWindow,
+
     active_window: Windows,
     api_client: api::Client,
+    chat_builder: ChatBuilder,
     should_quit: bool,
-    username: Option<String>,
+    user: Option<User>,
 }
 
 impl App {
@@ -24,14 +27,16 @@ impl App {
         mut api_client: api::Client,
     ) -> Self {
         let mut chat_manager = ChatManager::new();
-        let mut username = None;
+        let mut chat_builder = factory::get_chat_builder(vec![], get_current_user());
+        let mut user = None;
 
         if api_client.is_authenticated() {
-            // contacts = Self::load_contacts(&mut api_client);
-            let (chats, messages) = Self::load_chats_and_messages(&mut api_client).await;
-            chat_manager.add_chats(chats);
-            chat_manager.add_messages(messages);
-            username = Some(get_username());
+            let (chat_models, messages) = Self::load_chats_and_messages(&mut api_client).await;
+            App::save_new_users_data(&mut api_client, &mut chat_builder, &chat_models).await;
+            chat_manager.add_chats(chat_builder.build_chats_from_models(chat_models));
+            chat_manager.add_messages(chat_builder.build_messages_from_models(messages));
+
+            user = get_current_user();
         }
 
         Self {
@@ -39,8 +44,9 @@ impl App {
             main_window: MainWindow::new(chat_manager),
             active_window: if !api_client.is_authenticated() { Windows::Login } else { Windows::Main },
             api_client,
+            chat_builder,
             should_quit: false,
-            username,
+            user,
         }
     }
 
@@ -102,13 +108,13 @@ impl App {
                             let message = NewMessage {
                                 chat_id: chat.id.unwrap(),
                                 text: message_str,
-                                sender_username: self.username.clone().unwrap(),
+                                sender_id: self.user.as_ref().unwrap().id.clone(),
                             };
                             self.send_message(message).await;
                         } else {
                             let new_chat = NewChatModel {
                                 name: None,
-                                member_usernames: chat.member_usernames.clone(),
+                                member_ids: chat.members.iter().map(|member| member.id.clone()).collect(),
                                 first_message: message_str,
                             };
                             self.create_chat(new_chat).await;
@@ -163,7 +169,7 @@ impl App {
                         internal_id: user.username.clone(),
                         id: None,
                         name: user.username.clone(),
-                        member_usernames: vec![user.username.clone(), get_username()],
+                        members: vec![user, self.user.as_ref().unwrap().clone()],
                         last_message: None,
                         number_of_unread_messages: 0,
                     });
@@ -184,8 +190,9 @@ impl App {
         if let Some(message) = self.api_client.receive_message().await {
             if !self.main_window.chat_manager.has_chat(&message.chat_id) {
                 match self.api_client.get_chat(message.chat_id).await {
-                    Ok(chat) => {
-                        self.main_window.chat_manager.add_chat(Chat::from_model(chat));
+                    Ok(chat_model) => {
+                        App::save_new_users_data(&mut self.api_client, &mut self.chat_builder, &vec![chat_model.clone()]).await;
+                        self.main_window.chat_manager.add_chat(self.chat_builder.build_chat_from_model(chat_model));
                     }
                     Err(ApiError::Unauthenticated) => {
                         return;
@@ -193,7 +200,7 @@ impl App {
                     Err(e) => panic!("Error while loading chat: {:?}", e),
                 }
             }
-            self.main_window.chat_manager.add_message(message);
+            self.main_window.chat_manager.add_message(self.chat_builder.build_message_from_model(message));
         }
     }
 
@@ -209,14 +216,27 @@ impl App {
         let password = helpers::input_to_string(&res["password"]);
 
         match self.api_client.login(&username, &password).await {
-            Ok(_) => {
-                storage::store_username(&username);
-                self.username = Some(username);
+            Ok(user_id) => {
+                let user = User {
+                    username,
+                    id: user_id,
+                };
+                storage::store_user(&user);
+                self.user = Some(user);
 
-                let (chats, messages) = Self::load_chats_and_messages(&mut self.api_client).await;
-                self.main_window.chat_manager.add_chats(chats);
-                self.main_window.chat_manager.add_messages(messages);
-
+                // todo it's duplicate with new()
+                let (chat_models, messages) = Self::load_chats_and_messages(&mut self.api_client).await;
+                let user_ids = extract_user_ids(&chat_models);
+                if !user_ids.is_empty() {
+                    match self.api_client.get_users_by_ids(user_ids).await {
+                        Ok(users_result) => {
+                            self.chat_builder = factory::get_chat_builder(users_result.users, get_current_user());
+                            self.main_window.chat_manager.add_chats(self.chat_builder.build_chats_from_models(chat_models));
+                            self.main_window.chat_manager.add_messages(self.chat_builder.build_messages_from_models(messages));
+                        }
+                        Err(e) => panic!("Error while loading users: {:?}", e),
+                    }
+                }
                 self.active_window = Windows::Main;
             }
             Err(e) => {
@@ -237,9 +257,13 @@ impl App {
         let password = helpers::input_to_string(&res["password"]);
 
         match self.api_client.register(&username, &password).await {
-            Ok(_) => {
-                storage::store_username(&username);
-                self.username = Some(username);
+            Ok(user_id) => {
+                let user = User {
+                    username,
+                    id: user_id,
+                };
+                storage::store_user(&user);
+                self.user = Some(user);
                 self.active_window = Windows::Main;
             }
             Err(e) => {
@@ -279,10 +303,12 @@ impl App {
             Ok(chat_model) => {
                 let chat_id = chat_model.id.clone();
 
+                App::save_new_users_data(&mut self.api_client, &mut self.chat_builder, &vec![chat_model.clone()]).await;
+
                 // order is important: first clear search, then select chat
                 self.main_window.chat_manager.clear_search_results();
                 self.main_window.clear_search();
-                self.main_window.chat_manager.add_chat(Chat::from_model(chat_model));
+                self.main_window.chat_manager.add_chat(self.chat_builder.build_chat_from_model(chat_model));
                 self.main_window.chat_manager.select_chat(chat_id.to_string());
                 self.main_window.chat_manager.load_chat(chat_id.to_string());
             }
@@ -291,7 +317,24 @@ impl App {
         }
     }
 
-    async fn load_chats_and_messages(api_client: &mut api::Client) -> (Vec<Chat>, HashMap<ChatId, Vec<Message>>) {
+    async fn save_new_users_data(api_client: &mut api::Client, chat_builder: &mut ChatBuilder, chat_models: &Vec<ChatModel>) {
+        if chat_models.is_empty() {
+            return;
+        }
+        
+        let user_ids = extract_user_ids(chat_models);
+        if user_ids.is_empty() {
+            panic!("No user ids found in chat model");
+        }
+        match api_client.get_users_by_ids(user_ids).await {
+            Ok(users_result) => {
+                chat_builder.add_users(users_result.users);
+            }
+            Err(e) => panic!("Error while loading users: {:?}", e),
+        }
+    }
+
+    async fn load_chats_and_messages(api_client: &mut api::Client) -> (Vec<ChatModel>, HashMap<ChatId, Vec<MessageModel>>) {
         match api_client.get_chats().await {
             Ok(chat_results) => {
                 let mut messages = HashMap::new();
@@ -300,8 +343,7 @@ impl App {
                 }
                 let mut chats = Vec::new();
                 for chat_model in chat_results.chats {
-                    let chat = Chat::from_model(chat_model);
-                    chats.push(chat);
+                    chats.push(chat_model);
                 }
 
                 (chats, messages)
@@ -319,6 +361,16 @@ pub enum Windows {
     Main,
 }
 
-pub fn get_username() -> String {
-    storage::load_username().unwrap()
+pub fn get_current_user() -> Option<User> {
+    storage::load_user()
+}
+
+fn extract_user_ids(chats: &Vec<ChatModel>) -> Vec<String> {
+    let mut user_ids = HashSet::new();
+    for chat in chats {
+        for member_id in chat.member_ids.iter() {
+            user_ids.insert(member_id.clone());
+        }
+    }
+    user_ids.into_iter().collect()
 }

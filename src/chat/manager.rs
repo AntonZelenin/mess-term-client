@@ -17,6 +17,10 @@ impl ChatManager {
             ..Default::default()
         }
     }
+    
+    pub fn get_chats(&self) -> &Vec<Chat> {
+        &self.chats.items
+    }
 
     pub fn has_chat(&self, chat_id: &ChatId) -> bool {
         self.chats.contains(&chat_id.to_string())

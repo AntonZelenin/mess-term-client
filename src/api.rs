@@ -10,9 +10,9 @@ use tokio_tungstenite::{connect_async, MaybeTlsStream, tungstenite, WebSocketStr
 use tokio_tungstenite::tungstenite::Error;
 use url::Url;
 use crate::{helpers, schemas, storage};
-use crate::schemas::{ChatModel, ChatSearchResults, NewChatModel, NewMessage, RefreshTokenData, RegisterData, UserSearchResults};
+use crate::schemas::*;
 use crate::auth::AuthTokens;
-use crate::helpers::types::ChatId;
+use crate::helpers::types::{ChatId, UserId};
 
 pub const HOST: &str = "185.191.177.247:55800";
 // todo https
@@ -79,7 +79,7 @@ impl Client {
         self.auth_tokens.is_some()
     }
 
-    pub async fn login(&mut self, username: &str, password: &str) -> ApiResult<()> {
+    pub async fn login(&mut self, username: &str, password: &str) -> ApiResult<String> {
         let url = &format!("http://{}/login", AUTH_SERVICE_API_URL);
         let form_params = [
             ("username", username),
@@ -106,6 +106,7 @@ impl Client {
         if jwt.is_empty() || refresh_token.is_empty() {
             panic!("JWT or refresh token is empty");
         }
+        let user_id = data["user_id"].to_string().trim_matches('"').to_string();
 
         let jwt = jwt.trim_matches('"').to_string();
         let refresh_token = refresh_token.trim_matches('"').to_string();
@@ -114,10 +115,10 @@ impl Client {
 
         self.connect_to_message_ws(RequestParams::default()).await;
 
-        Ok(())
+        Ok(user_id)
     }
 
-    pub async fn register(&mut self, username: &str, password: &str) -> ApiResult<()> {
+    pub async fn register(&mut self, username: &str, password: &str) -> ApiResult<String> {
         let url = &format!("http://{}/users", USER_SERVICE_API_URL);
         let register_data = RegisterData {
             username: username.to_string(),
@@ -154,6 +155,7 @@ impl Client {
         if jwt.is_empty() || refresh_token.is_empty() {
             panic!("JWT or refresh token is empty");
         }
+        let user_id = data["user_id"].to_string().trim_matches('"').to_string();
 
         let jwt = jwt.trim_matches('"').to_string();
         let refresh_token = refresh_token.trim_matches('"').to_string();
@@ -162,7 +164,21 @@ impl Client {
 
         self.connect_to_message_ws(RequestParams::default()).await;
 
-        Ok(())
+        Ok(user_id)
+    }
+
+    pub async fn get_users_by_ids(&mut self, user_ids: Vec<UserId>) -> ApiResult<UserSearchResults> {
+        let rp = RequestParams {
+            uri: format!("http://{}/users/batch-query", USER_SERVICE_API_URL),
+            body: Some(serde_json::to_value(&GetUsersByIdsRequest { user_ids }).unwrap()),
+            ..Default::default()
+        };
+        let res = self.post(rp).await?;
+        let data = res.json::<serde_json::Value>()
+            .await
+            .map_err(|e| ApiError::DataError(e.to_string()))?;
+       
+        Ok(serde_json::from_str(&data.to_string()).unwrap())
     }
 
     pub async fn get_chats(&mut self) -> ApiResult<ChatSearchResults> {
@@ -254,11 +270,11 @@ impl Client {
         Ok(serde_json::from_str(&data.to_string()).unwrap())
     }
 
-    pub async fn receive_message(&mut self) -> Option<schemas::Message> {
+    pub async fn receive_message(&mut self) -> Option<schemas::MessageModel> {
         if let Some(message) = self.read_message_ws.as_mut().expect("Unauthenticated").next().await {
             match message {
                 Ok(Message::Text(text)) => {
-                    match serde_json::from_str::<schemas::Message>(&text) {
+                    match serde_json::from_str::<schemas::MessageModel>(&text) {
                         Ok(parsed_message) => {
                             return Some(parsed_message);
                         }
@@ -441,7 +457,7 @@ impl Client {
         self.auth_tokens = Some(tokens.clone());
         (self.store_auth_tokens_callback)(&tokens);
     }
-    
+
     fn unauthenticate(&mut self) {
         self.auth_tokens = None;
         (self.delete_auth_tokens_callback)();

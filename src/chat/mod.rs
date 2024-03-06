@@ -1,8 +1,9 @@
+pub mod builder;
 pub mod manager;
 
 use std::cmp::Ordering;
-use crate::app;
-use crate::schemas::{ChatModel, Message};
+use serde::{Deserialize, Serialize};
+use crate::schemas::User;
 use crate::helpers::types::ChatId;
 use crate::helpers::traits::InternalID;
 
@@ -12,7 +13,7 @@ pub struct Chat {
     pub internal_id: String,
     pub id: Option<ChatId>,
     pub name: String,
-    pub member_usernames: Vec<String>,
+    pub members: Vec<User>,
     pub last_message: Option<Message>,
     pub number_of_unread_messages: u32,
 }
@@ -61,25 +62,11 @@ impl Ord for Chat {
     }
 }
 
-impl Chat {
-    pub fn from_model(chat_model: ChatModel) -> Self {
-        let last_message = chat_model.messages.first().cloned();
-        let chat_name = if let Some(name) = chat_model.name {
-            name
-        } else {
-            assert_eq!(chat_model.member_usernames.len(), 2, "Chat name is None and chat has more or less than 2 members");
-
-            let current_username = app::get_username();
-            chat_model.member_usernames.iter().find(|username| *username != &current_username).unwrap().clone()
-        };
-
-        Chat {
-            internal_id: chat_model.id.to_string(),
-            id: Some(chat_model.id),
-            name: chat_name,
-            member_usernames: chat_model.member_usernames,
-            last_message,
-            number_of_unread_messages: 0,
-        }
-    }
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Message {
+    pub chat_id: u32,
+    pub sender_username: String,
+    pub text: String,
+    pub created_at: f64,
+    pub is_read: bool,
 }

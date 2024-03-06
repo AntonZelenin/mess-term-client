@@ -14,6 +14,7 @@ mod app;
 mod chat;
 mod constants;
 mod event;
+mod factory;
 mod helpers;
 mod schemas;
 mod storage;
